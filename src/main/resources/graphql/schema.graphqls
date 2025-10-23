@@ -1,0 +1,27 @@
+type Course {
+    subject: String
+    courseNum: Int
+    title: String
+    section: String
+    crn: Int
+    campus: String
+    credits: Int
+    capacity: String
+    requests: String
+    delivery: String
+}
+
+type Query {
+    getCourses(
+        subject: String,
+        courseNum: Int,
+        title: String,
+        section: String,
+        crn: Int,
+        campus: String,
+        credits: Int,
+        capacity: String,
+        requests: String,
+        delivery: String
+    ): [Course]
+}
