@@ -9,21 +9,18 @@ import org.springframework.stereotype.Controller
 @Controller
 class CourseResolver(private val service: CourseService) {
     @QueryMapping
-    fun getCourses(
-        @Argument subject: String?,
+    suspend fun getCourses(
+        @Argument subject: List<String>?,
         @Argument courseNum: Int?,
-        @Argument title: String?,
-        @Argument section: String?,
-        @Argument crn: Int?,
-        @Argument campus: String?,
-        @Argument credits: Int?,
-        @Argument capacity: String?,
-        @Argument requests: String?,
-        @Argument delivery: String?
+        @Argument campus: List<String>?,
+        @Argument attributes: List<String>?,
+        @Argument delivery: List<String>?,
+        @Argument term: String?,
     ): List<Course> {
         return service.getCourses(
-            subject, courseNum, title, section, crn,
-            campus, credits, capacity, requests, delivery
+            subject, courseNum,
+            campus, attributes,
+            delivery, term
         )
     }
 }

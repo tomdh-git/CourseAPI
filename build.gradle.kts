@@ -23,6 +23,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor:1.8.1")
+    implementation("org.springframework.data:spring-data-commons")
 
     // HTML parsing
     implementation("org.jsoup:jsoup:1.17.2")
@@ -31,11 +33,8 @@ dependencies {
     implementation("io.ktor:ktor-client-core:2.3.0")
     implementation("io.ktor:ktor-client-cio:2.3.0")
 
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.springframework:spring-webflux")
-    testImplementation("org.springframework.graphql:spring-graphql-test")
+    implementation("org.springframework.boot:spring-boot-starter-webflux")
 }
-
 
 tasks.withType<Test> {
     useJUnitPlatform()

@@ -6,29 +6,21 @@ import org.springframework.stereotype.Service
 
 @Service
 class CourseService(private val repo: CourseRepo) {
-    fun getCourses(
-        subject: String?,
+    suspend fun getCourses(
+        subject: List<String>?,
         courseNum: Int?,
-        title: String?,
-        section: String?,
-        crn: Int?,
-        campus: String?,
-        credits: Int?,
-        capacity: String?,
-        requests: String?,
-        delivery: String?
+        campus: List<String>?,
+        attributes: List<String>?,
+        delivery: List<String>?,
+        term: String?,
     ): List<Course> {
         return repo.getCourses(
             subject,
             courseNum,
-            title,
-            section,
-            crn,
             campus,
-            credits,
-            capacity,
-            requests,
-            delivery
+            attributes,
+            delivery,
+            term
         )
     }
 }

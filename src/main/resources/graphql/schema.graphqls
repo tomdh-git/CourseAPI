@@ -13,15 +13,11 @@ type Course {
 
 type Query {
     getCourses(
-        subject: String,
-        courseNum: Int,
-        title: String,
-        section: String,
-        crn: Int,
-        campus: String,
-        credits: Int,
-        capacity: String,
-        requests: String,
-        delivery: String
+        subject: [String]
+        courseNum: Int
+        campus: [String]
+        attributes: [String]
+        delivery: [String]
+        term: String
     ): [Course]
 }
