@@ -1,12 +1,15 @@
 package com.example.courseapi.repos
 
 import com.example.courseapi.models.Course
+import com.example.courseapi.services.RequestService
 import io.ktor.http.encodeURLParameter
 import org.springframework.stereotype.Repository
 import kotlin.system.measureTimeMillis
 
 @Repository
-class CourseRepo{
+class CourseRepo(
+    private val service: RequestService
+){
     suspend fun getCourses(
         subject: List<String>?,
         courseNum: Int?,
@@ -19,7 +22,7 @@ class CourseRepo{
         val totalStart = System.nanoTime()
         var token = ""
         val tokenMs = measureTimeMillis {
-            token = getOrFetchToken()
+            token = service.getOrFetchToken()
             if (token.isEmpty()) return emptyList()
         }
         println("token: $tokenMs ms")
@@ -50,16 +53,16 @@ class CourseRepo{
         println("form: $formMs ms")
 
         // send post request
-        var resp: HttpTextResponse
+        var resp: RequestService.HttpTextResponse
         val postMs = measureTimeMillis {
-            resp = postResultResponse(formBody)
+            resp = service.postResultResponse(formBody)
             // If token expired (e.g., 419/Page Expired), refresh once and retry
             if (resp.status == 419 || resp.body.contains("Page Expired", ignoreCase = true)) {
-                token = getOrFetchToken()
+                token = service.getOrFetchToken()
                 if (token.isNotEmpty()) {
                     formParts[0] = "_token=${token.encodeURLParameter()}"
                     formBody = formParts.joinToString("&")
-                    resp = postResultResponse(formBody)
+                    resp = service.postResultResponse(formBody)
                 }
             }
         }
