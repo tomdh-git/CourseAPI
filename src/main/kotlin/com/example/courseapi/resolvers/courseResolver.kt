@@ -3,6 +3,10 @@ package com.example.courseapi.resolvers
 import com.example.courseapi.exceptions.*
 import com.example.courseapi.models.CourseResult
 import com.example.courseapi.services.CourseService
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.ServerResponseException
+import io.ktor.utils.io.errors.IOException
+import kotlinx.coroutines.TimeoutCancellationException
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.graphql.data.method.annotation.Argument
@@ -14,20 +18,33 @@ class CourseResolver(private val service: CourseService, private val logger: Log
     @QueryMapping
     suspend fun getCourseByInfo(@Argument subject: List<String>?, @Argument courseNum: Int?, @Argument campus: List<String>?, @Argument attributes: List<String>?, @Argument delivery: List<String>?, @Argument term: String?, @Argument openWaitlist: String?, @Argument crn: Int?, @Argument partOfTerm: List<String>?, @Argument level: String?, @Argument courseTitle: String?, @Argument daysFilter: List<String>?, @Argument creditHours: Int?, @Argument startEndTime: List<String>?): CourseResult {
         return try { CourseResult.Success(service.getCourseByInfo(subject, courseNum, campus, attributes, delivery, term, openWaitlist, crn, partOfTerm, level, courseTitle, daysFilter, creditHours, startEndTime)) }
-        catch (e: TokenException) { logger.error("Token Exception in getCourseByInfo: Couldn't fetch token (returned empty)"); CourseResult.Error("TOKEN EXCEPTION", e.message) }
-        catch (e: QueryException) { logger.error("Query Exception in getCourseByInfo: Query returned too many results"); CourseResult.Error("QUERY EXCEPTION", e.message) }
-        catch (e: IllegalArgumentException) { logger.error("Illegal Argument Exception in getCourseByInfo: Subjects empty or invalid"); CourseResult.Error("ILLEGAL ARGUMENT EXCEPTION", e.message) }
-        catch (e: Exception) {logger.error("Unexpected Exception in getCourseByInfo: ${e.message}"); CourseResult.Error("UNEXPECTED EXCEPTION", e.message) }
+        catch (e: TokenException) { logger.error("Token Exception in getCourseByInfo: Couldn't fetch token (returned empty) at ${e.stackTraceToString()}"); CourseResult.Error("TOKEN EXCEPTION", e.message) }
+        catch (e: QueryException) { logger.error("Query Exception in getCourseByInfo: Query returned too many results at ${e.stackTraceToString()}"); CourseResult.Error("QUERY EXCEPTION", e.message) }
+        catch (e: IllegalArgumentException) { logger.error("Illegal Argument Exception in getCourseByInfo: ${e.message} at ${e.stackTraceToString()}"); CourseResult.Error("ILLEGAL ARGUMENT EXCEPTION", e.message) }
+        catch (e: TimeoutCancellationException) { logger.error("Timeout Cancellation Exception in getCourseByInfo: ${e.message} at ${e.stackTraceToString()}"); CourseResult.Error("TIMEOUT EXCEPTION", e.message) }
+        catch (e: NullPointerException) { logger.error("Null Pointer Exception in getCourseByInfo: ${e.message} at ${e.stackTraceToString()} (problably because of HTML parsing failure)"); CourseResult.Error("NULL POINTER EXCEPTION", e.message)}
+        catch (e: Exception) { when (e) { is IOException, is ClientRequestException, is ServerResponseException -> { logger.error("Network Exception in getCourseByInfo: ${e.message} at ${e.stackTraceToString()} (bad response or network layer error)"); CourseResult.Error("NETWORK EXCEPTION", e.message) }
+            else -> { logger.error("Unexpected Exception in getCourseByInfo: ${e.message} at ${e.stackTraceToString()}"); CourseResult.Error("UNKNOWN EXCEPTION", e.message) } }
+        }
     }
 
     @QueryMapping
     suspend fun getCourseByCRN(@Argument crn: Int?, @Argument term: String?): CourseResult {
         return try { CourseResult.Success(service.getCourseByCRN(crn, term)) }
-        catch (e: TokenException) { logger.error("Token Exception in getCourseByCRN: Couldn't fetch token (returned empty)"); CourseResult.Error("TOKEN EXCEPTION", e.message) }
-        catch (e: QueryException) { logger.error("Query Exception in getCourseByCRN: Query returned too many results"); CourseResult.Error("QUERY EXCEPTION", e.message) }
-        catch (e: IllegalArgumentException) { logger.error("Illegal Argument Exception in getCourseByCRN: Subjects empty or invalid"); CourseResult.Error("ILLEGAL ARGUMENT EXCEPTION", e.message) }
-        catch (e: Exception) {logger.error("Unexpected Exception in getCourseByCRN: ${e.message}"); CourseResult.Error("UNEXPECTED EXCEPTION", e.message) }
+        catch (e: TokenException) { logger.error("Token Exception in getCourseByCRN: Couldn't fetch token (returned empty) at ${e.stackTraceToString()}"); CourseResult.Error("TOKEN EXCEPTION", e.message) }
+        catch (e: QueryException) { logger.error("Query Exception in getCourseByCRN: Query returned too many results at ${e.stackTraceToString()}"); CourseResult.Error("QUERY EXCEPTION", e.message) }
+        catch (e: IllegalArgumentException) { logger.error("Illegal Argument Exception in getCourseByCRN: ${e.message} at ${e.stackTraceToString()}"); CourseResult.Error("ILLEGAL ARGUMENT EXCEPTION", e.message) }
+        catch (e: TimeoutCancellationException) { logger.error("Timeout Cancellation Exception in getCourseByCRN: ${e.message} at ${e.stackTraceToString()}"); CourseResult.Error("TIMEOUT EXCEPTION", e.message) }
+        catch (e: NullPointerException) { logger.error("Null Pointer Exception in getCourseByCRN: ${e.message} at ${e.stackTraceToString()} (problably because of HTML parsing failure)"); CourseResult.Error("NULL POINTER EXCEPTION", e.message)}
+        catch (e: Exception) { when (e) { is IOException, is ClientRequestException, is ServerResponseException -> { logger.error("Network Exception in getCourseByCRN: ${e.message} at ${e.stackTraceToString()} (bad response or network layer error)"); CourseResult.Error("NETWORK EXCEPTION", e.message) }
+            else -> { logger.error("Unexpected Exception in getCourseByCRN: ${e.message} at ${e.stackTraceToString()}"); CourseResult.Error("UNKNOWN EXCEPTION", e.message) } }
+        }
     }
+
+//    @QueryMapping
+//    suspend fun getScheduleByCourses(@Argument courses: List<String>?){
+//
+//    }
     //getScheduleByCourses, getFillerByAttributes,
 
 }
