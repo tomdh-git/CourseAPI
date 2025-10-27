@@ -39,4 +39,8 @@ type Query {
         creditHours: Int
         startEndTime: [String]
     ): CourseResult
+    getCourseByCRN(
+        crn: Int
+        term: String
+    ): CourseResult
 }
