@@ -18,8 +18,6 @@ class RequestService(private val client: HttpClient) {
                 append("Accept", "text/html")
                 append("Accept-Encoding", "gzip, deflate")
                 append("User-Agent", "Mozilla/5.0")
-//                append("Cache-Control", "max-age=0")
-//                append("Upgrade-Insecure-Requests", "1")
             }
         }
         return initialResponse.bodyAsText().substring(4500,7000)
@@ -30,7 +28,6 @@ class RequestService(private val client: HttpClient) {
         val cached = lastToken
         if (cached != null && now - lastTokenTs < TOKEN_TTL_MS) return cached
         val html = getTokenResponse()
-        println("size of html: ${html.length}")
         val token = """<input[^>]*name=\"_token\"[^>]*value=\"([^\"]+)\"""".toRegex().find(html)?.groupValues?.get(1)
         if (token != null) {
             lastToken = token
@@ -49,7 +46,6 @@ class RequestService(private val client: HttpClient) {
                 append("User-Agent", "Mozilla/5.0")
                 append("Origin", "https://www.apps.miamioh.edu")
                 append("Referer", "https://www.apps.miamioh.edu/courselist/")
-//                append("Cache-Control", "max-age=0")
             }
             setBody(formBody)
         }
