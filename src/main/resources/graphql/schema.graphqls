@@ -30,5 +30,13 @@ type Query {
         attributes: [String]
         delivery: [String]
         term: String
+        openWaitlist: String
+        crn: Int
+        partOfTerm: [String]
+        level: String
+        courseTitle: String
+        daysFilter: [String]
+        creditHours: Int
+        startEndTime: [String]
     ): CourseResult
 }
