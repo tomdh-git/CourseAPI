@@ -1,5 +1,6 @@
 package com.example.courseapi.repos
 
+import com.example.courseapi.exceptions.TokenException
 import com.example.courseapi.models.Course
 import io.ktor.http.encodeURLParameter
 import org.springframework.stereotype.Repository
@@ -21,7 +22,7 @@ class CourseRepo(
     ): List<Course> {
         // get or reuse token (saves one GET on warm requests)
         val token = requests.getOrFetchToken()
-        if (token.isEmpty()) return emptyList()
+        if (token.isEmpty()) throw TokenException("Empty Token")
 
         // build form
         val formParts = ArrayList<String>(24)
@@ -45,14 +46,14 @@ class CourseRepo(
         val formBody = formParts.joinToString("&")
 
         // send post request
-        val resp = requests.postResultResponse(formBody)
+        var resp = requests.postResultResponse(formBody)
         // If token expired (e.g., 419/Page Expired), refresh once and retry
         if (resp.status == 419 || resp.body.contains("Page Expired", ignoreCase = true)) {
             val token = requests.getOrFetchToken()
             if (token.isNotEmpty()) {
                 formParts[0] = "_token=${token.encodeURLParameter()}"
                 val formBody = formParts.joinToString("&")
-                val resp = requests.postResultResponse(formBody)
+                resp = requests.postResultResponse(formBody)
             }
         }
 

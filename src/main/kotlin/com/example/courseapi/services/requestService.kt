@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service
 class RequestService(private val client: HttpClient) {
     @Volatile private var lastToken: String? = null
     @Volatile private var lastTokenTs: Long = 0
-    private  val TOKEN_TTL_MS = 120_000L
+    private  val tokenTimeout = 120_000L
     data class HttpTextResponse(val status: Int, val body: String)
 
     suspend fun getTokenResponse(): String{
@@ -26,9 +26,9 @@ class RequestService(private val client: HttpClient) {
     suspend fun getOrFetchToken(): String {
         val now = System.currentTimeMillis()
         val cached = lastToken
-        if (cached != null && now - lastTokenTs < TOKEN_TTL_MS) return cached
+        if (cached != null && now - lastTokenTs < tokenTimeout) return cached
         val html = getTokenResponse()
-        val token = """<input[^>]*name=\"_token\"[^>]*value=\"([^\"]+)\"""".toRegex().find(html)?.groupValues?.get(1)
+        val token = """<input[^>]*name="_token"[^>]*value="([^"]+)"""".toRegex().find(html)?.groupValues?.get(1)
         if (token != null) {
             lastToken = token
             lastTokenTs = now
@@ -54,11 +54,11 @@ class RequestService(private val client: HttpClient) {
 
         // refresh check
         if (resultHtml.contains("meta http-equiv=\"refresh\"")) {
-            val redirectUrl = """content=\s*\"\s*\d+;\s*url='([^']+)'\s*\"""".toRegex().find(resultHtml)?.groupValues?.get(1)
+            val redirectUrl = """content=\s*"\s*\d+;\s*url='([^']+)'\s*"""".toRegex().find(resultHtml)?.groupValues?.get(1)
             if (redirectUrl != null) {
                 val absolute = if (redirectUrl.startsWith("http")) redirectUrl else {
-                    val path = if (redirectUrl.startsWith("/")) redirectUrl else "/courselist/" + redirectUrl
-                    "https://www.apps.miamioh.edu" + path
+                    val path = if (redirectUrl.startsWith("/")) redirectUrl else "/courselist/$redirectUrl"
+                    "https://www.apps.miamioh.edu$path"
                 }
                 val redirectResponse = client.get(absolute) {
                     headers {

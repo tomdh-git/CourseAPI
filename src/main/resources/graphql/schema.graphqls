@@ -11,6 +11,17 @@ type Course {
     delivery: String
 }
 
+type Success {
+    courses: [Course]
+}
+
+type Error {
+    error: String
+    message: String
+}
+
+union CourseResult = Success | Error
+
 type Query {
     getCourses(
         subject: [String]
@@ -19,5 +30,5 @@ type Query {
         attributes: [String]
         delivery: [String]
         term: String
-    ): [Course]
+    ): CourseResult
 }
