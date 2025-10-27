@@ -23,7 +23,7 @@ type Error {
 union CourseResult = Success | Error
 
 type Query {
-    getCourses(
+    getCourseByInfo(
         subject: [String]
         courseNum: Int
         campus: [String]

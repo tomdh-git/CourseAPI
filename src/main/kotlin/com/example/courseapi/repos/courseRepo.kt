@@ -1,5 +1,6 @@
 package com.example.courseapi.repos
 
+import com.example.courseapi.exceptions.QueryException
 import com.example.courseapi.exceptions.TokenException
 import com.example.courseapi.models.Course
 import io.ktor.http.encodeURLParameter
@@ -9,7 +10,7 @@ import com.example.courseapi.services.ParseService
 
 @Repository
 class CourseRepo(private val requests: RequestService, private val parse: ParseService){
-    suspend fun getCourses(subject: List<String>?, courseNum: Int?, campus: List<String>?, attributes: List<String>?, delivery: List<String>?, term: String?): List<Course> {
+    suspend fun getCourseByInfo(subject: List<String>, courseNum: Int?, campus: List<String>?, attributes: List<String>?, delivery: List<String>?, term: String?, crn: Int = 0): List<Course> {
         // get or reuse token (saves one GET on warm requests)
         val token = requests.getOrFetchToken()
         if (token.isEmpty()) throw TokenException("Empty Token")
@@ -21,10 +22,11 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
         if (!attributes.isNullOrEmpty()) { attributes.forEach{formParts.add("sectionFilterAttributes%5B%5D=${it.encodeURLParameter()}")} }
         if (!term.isNullOrEmpty()) { formParts.add("term=${term.encodeURLParameter()}") }
         if (!campus.isNullOrEmpty()) { campus.forEach { formParts.add("campusFilter%5B%5D=${it.encodeURLParameter()}") } } else { formParts.add("campusFilter%5B%5D=All") }
-        if (!subject.isNullOrEmpty()) { subject.forEach { formParts.add("subject%5B%5D=${it.encodeURLParameter()}") } }
+        subject.forEach { formParts.add("subject%5B%5D=${it.encodeURLParameter()}") }
         if (courseNum != null && courseNum > 0) { formParts.add("courseNumber=${courseNum}") } else { formParts.add("courseNumber=") }
         formParts.add("courseSearch=Find")
         formParts.add("openWaitlist=")
+        if (crn != 0) { formParts.add("crnNumber==${crn}") } else { formParts.add("crnNumber=") }
         formParts.add("crnNumber=")
         formParts.add("level=")
         formParts.add("courseTitle=")
@@ -37,7 +39,7 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
 
         // send post request
         var resp = requests.postResultResponse(formBody)
-        // If token expired (e.g., 419/Page Expired), refresh once and retry
+        // page expired check
         if (resp.status == 419 || resp.body.contains("Page Expired", ignoreCase = true)) {
             val token = requests.getOrFetchToken()
             if (token.isNotEmpty()) {
@@ -46,7 +48,8 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
                 resp = requests.postResultResponse(formBody)
             }
         }
-
+        //too many results
+        if (resp.body.contains("Your query returned too many results.",ignoreCase = true)) { throw QueryException("Query returned too many results.") }
         // parse
         return parse.parseCourses(resp.body)
     }
