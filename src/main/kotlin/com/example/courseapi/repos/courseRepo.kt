@@ -8,18 +8,8 @@ import com.example.courseapi.services.RequestService
 import com.example.courseapi.services.ParseService
 
 @Repository
-class CourseRepo(
-    private val requests: RequestService,
-    private val parse: ParseService
-){
-    suspend fun getCourses(
-        subject: List<String>?,
-        courseNum: Int?,
-        campus: List<String>?,
-        attributes: List<String>?,
-        delivery: List<String>?,
-        term: String?,
-    ): List<Course> {
+class CourseRepo(private val requests: RequestService, private val parse: ParseService){
+    suspend fun getCourses(subject: List<String>?, courseNum: Int?, campus: List<String>?, attributes: List<String>?, delivery: List<String>?, term: String?): List<Course> {
         // get or reuse token (saves one GET on warm requests)
         val token = requests.getOrFetchToken()
         if (token.isEmpty()) throw TokenException("Empty Token")
@@ -58,7 +48,6 @@ class CourseRepo(
         }
 
         // parse
-        val res = parse.parseCourses(resp.body)
-        return res
+        return parse.parseCourses(resp.body)
     }
 }

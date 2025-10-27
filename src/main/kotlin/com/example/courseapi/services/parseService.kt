@@ -5,7 +5,7 @@ import org.jsoup.Jsoup
 import org.springframework.stereotype.Service
 
 @Service
-class ParseService(){
+class ParseService{
     fun parseCourses(html: String): List<Course> {
         val doc = Jsoup.parse(html)
         val rows = doc.select("tr.resultrow")
@@ -23,21 +23,8 @@ class ParseService(){
             val capacity = tds[7].text().trim()
             val requests = tds[8].text().trim()
             val delivery = tds.getOrNull(9)?.text()?.trim() ?: ""
-
             if (subject.isEmpty() && courseNum == 0 && title.isEmpty()) continue
-            list.add(
-                Course(
-                    subject = subject,
-                    courseNum = courseNum,
-                    title = title,
-                    section = section,
-                    crn = crn,
-                    campus = campus,
-                    credits = credits,
-                    capacity = capacity,
-                    requests = requests,
-                    delivery = delivery
-                )
+            list.add(Course(subject, courseNum, title, section, crn, campus, credits, capacity, requests, delivery)
             )
         }
         return list
