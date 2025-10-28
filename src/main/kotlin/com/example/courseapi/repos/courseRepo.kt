@@ -37,7 +37,7 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
         if (!daysFilter.isNullOrEmpty()) { daysFilter.forEach { formParts.add("daysFilter%5B%5D=${it.encodeURLParameter()}") } }
         val formBody = formParts.joinToString("&")
 
-        println(formParts.joinToString("\n"))
+//        println(formParts.joinToString("\n"))
 
         // send post request
         var resp = requests.postResultResponse(formBody)
