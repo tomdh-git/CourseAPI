@@ -34,6 +34,10 @@ dependencies {
     implementation("io.ktor:ktor-client-cio:2.3.0")
 
     implementation("org.springframework.boot:spring-boot-starter-webflux")
+
+    testImplementation("org.mockito.kotlin:mockito-kotlin:3.2.0")
+    testImplementation(kotlin("test"))
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 
 tasks.withType<Test> {

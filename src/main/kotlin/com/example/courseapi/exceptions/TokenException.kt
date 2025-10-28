@@ -1,3 +1,3 @@
 package com.example.courseapi.exceptions
 
-class TokenException(msg: String) : Exception(msg)
+class TokenException(msg: String) : RuntimeException(msg)

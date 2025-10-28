@@ -1,14 +1,14 @@
 package com.example.courseapi.repos
 
 import com.example.courseapi.exceptions.*
-import com.example.courseapi.models.Course
+import com.example.courseapi.models.*
 import io.ktor.http.encodeURLParameter
 import org.springframework.stereotype.Repository
 import com.example.courseapi.services.*
 
 @Repository
 class CourseRepo(private val requests: RequestService, private val parse: ParseService){
-    suspend fun getCourseByInfo(subject: List<String>? = emptyList(), courseNum: Int? = 0, campus: List<String>, attributes: List<String>? = emptyList(), delivery: List<String>? = emptyList(), term: String, openWaitlist: String? = "", crn: Int? = 0, partOfTerm: List<String>? = emptyList(), level: String? = "", courseTitle: String? = "", daysFilter: List<String>? = emptyList(), creditHours: Int? = 0, startEndTime: List<String>? = emptyList()): List<Course> {
+    suspend fun getCourseByInfo(subject: List<String>? = null, courseNum: Int? = null, campus: List<String>, attributes: List<String>? = null, delivery: List<String>? = null, term: String, openWaitlist: String? = null, crn: Int? = null, partOfTerm: List<String>? = null, level: String? = null, courseTitle: String? = null, daysFilter: List<String>? = null, creditHours: Int? = null, startEndTime: List<String>? = null): List<Course> {
         // get or reuse token (saves one GET on warm requests)
         val token = requests.getOrFetchToken()
         if (token.isEmpty()) throw TokenException("Empty Token")
@@ -27,7 +27,7 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
         if (courseTitle != null) formParts.add("courseTitle=$courseTitle") else formParts.add("courseTitle=")
         formParts.add("instructor=")
         formParts.add("instructorUid=")
-        if (creditHours!=0) formParts.add("creditHours=$creditHours") else formParts.add("creditHours=")
+        if (creditHours!=null) formParts.add("creditHours=$creditHours") else formParts.add("creditHours=")
         if (!startEndTime.isNullOrEmpty()) { startEndTime.forEach { formParts.add("startEndTime%5B%5D=${it.encodeURLParameter()}") } } else { formParts.add("startEndTime%5B%5D="); formParts.add("startEndTime%5B%5D=") }
         formParts.add("courseSearch=Find")
         //not mandatory
@@ -55,4 +55,8 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
         // parse
         return parse.parseCourses(resp.body)
     }
+
+//    suspend fun getScheduleByInfo(courses: List<String>? = emptyList()): List<Schedule>{
+//
+//    }
 }
