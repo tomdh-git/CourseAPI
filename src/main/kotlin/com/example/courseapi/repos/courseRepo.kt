@@ -58,22 +58,12 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
         return parse.parseCourses(resp.body)
     }
 
-    suspend fun getScheduleByCourses(courses: List<String>, campus: List<String>, term: String, optimizeFreeTime: Boolean? = false, preferredStart: String?, preferredEnd: String?): List<Schedule> =
-        coroutineScope{
-            val parsed = courses.mapNotNull {
-                val p = it.trim().split(" ")
-                if (p.size == 2) p[0] to p[1] else null
-            }
-            val fetched = parsed.map { (subject, num) ->
-                async {
-                    val sections = getCourseByInfo(subject = listOf(subject), courseNum = num, campus = campus, term = term)
-                    (subject to num) to sections
-                }
-            }.awaitAll().toMap()
+    suspend fun getScheduleByCourses(courses: List<String>, campus: List<String>, term: String, optimizeFreeTime: Boolean? = false, preferredStart: String?, preferredEnd: String?): List<Schedule> = coroutineScope{
+            val parsed = courses.mapNotNull { val p = it.trim().split(" "); if (p.size == 2) p[0] to p[1] else null }
+            val fetched = parsed.map { (subject, num) -> async { val sections = getCourseByInfo(subject = listOf(subject), courseNum = num, campus = campus, term = term); subject to num to sections } }.awaitAll().groupBy({ it.first }, { it.second }).mapValues { it.value.flatten() }
             val valid = fetched.filterValues { it.isNotEmpty() }
             if (valid.isEmpty()) throw QueryException("No valid schedules found")
             val combos = parse.cartesianProduct(valid.values.toList())
-            println(combos.size)//58320
             if (combos.isEmpty()) throw QueryException("No schedule combos found")
             val validCombos = combos.filter { combo -> !parse.timeConflicts(combo.map { it.delivery }, parse.toMinutes(preferredStart ?: "12:00am"), parse.toMinutes(preferredEnd ?: "11:59pm")) }
             if (validCombos.isEmpty()) throw QueryException("No valid schedule combos found")

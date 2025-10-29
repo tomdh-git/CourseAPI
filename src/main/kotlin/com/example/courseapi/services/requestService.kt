@@ -3,6 +3,8 @@ package com.example.courseapi.services
 import io.ktor.client.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.springframework.stereotype.Service
 
 @Service
@@ -10,6 +12,7 @@ class RequestService(private val client: HttpClient) {
     @Volatile private var lastToken: String? = null
     @Volatile private var lastTokenTs: Long = 0
     private  val tokenTimeout = 120_000L
+    private val tokenLock = Mutex()
     data class HttpTextResponse(val status: Int, val body: String)
 
     suspend fun getTokenResponse(): String{
@@ -21,10 +24,7 @@ class RequestService(private val client: HttpClient) {
         val now = System.currentTimeMillis()
         val cached = lastToken
         if (cached != null && now - lastTokenTs < tokenTimeout) return cached
-        val html = getTokenResponse()
-        val token = """<input[^>]*name="_token"[^>]*value="([^"]+)"""".toRegex().find(html)?.groupValues?.get(1)
-        if (token != null) { lastToken = token; lastTokenTs = now; return token }
-        return ""
+        return tokenLock.withLock { val againNow = System.currentTimeMillis(); if (lastToken != null && againNow - lastTokenTs < tokenTimeout) return lastToken!! ; val html = getTokenResponse() ; val token = """<input[^>]*name="_token"[^>]*value="([^"]+)"""".toRegex().find(html)?.groupValues?.get(1) ?: ""; lastToken = token; lastTokenTs = againNow; token }
     }
 
     suspend fun postResultResponse(formBody: String): HttpTextResponse {
