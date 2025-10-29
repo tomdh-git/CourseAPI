@@ -1,11 +1,12 @@
 package com.example.courseapi.models
 
-sealed interface ScheduleResult {
-    data class Success(
-        val courses: List<Schedule>
-    ): ScheduleResult
-    data class Error(
-        val error: String = "",
-        val message: String? = ""
-    ): ScheduleResult
-}
+sealed interface ScheduleResult
+
+data class SuccessSchedule(
+    val schedules: List<Schedule>
+) : ScheduleResult
+
+data class ErrorSchedule(
+    val error: String,
+    val message: String?
+) : ScheduleResult

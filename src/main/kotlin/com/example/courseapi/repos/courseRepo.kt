@@ -8,33 +8,32 @@ import com.example.courseapi.services.*
 
 @Repository
 class CourseRepo(private val requests: RequestService, private val parse: ParseService){
-    suspend fun getCourseByInfo(subject: List<String>? = null, courseNum: Int? = null, campus: List<String>, attributes: List<String>? = null, delivery: List<String>? = null, term: String, openWaitlist: String? = null, crn: Int? = null, partOfTerm: List<String>? = null, level: String? = null, courseTitle: String? = null, daysFilter: List<String>? = null, creditHours: Int? = null, startEndTime: List<String>? = null): List<Course> {
+    suspend fun getCourseByInfo(subject: List<String>? = null, courseNum: String? = null, campus: List<String>, attributes: List<String>? = null, delivery: List<String>? = null, term: String, openWaitlist: String? = null, crn: Int? = null, partOfTerm: List<String>? = null, level: String? = null, courseTitle: String? = null, daysFilter: List<String>? = null, creditHours: Int? = null, startEndTime: List<String>? = null): List<Course> {
         // get or reuse token (saves one GET on warm requests)
         val token = requests.getOrFetchToken()
         if (token.isEmpty()) throw TokenException("Empty Token")
 
         // build form
         val formParts = ArrayList<String>(24)
-        //mandatory
         formParts.add("_token=${token.encodeURLParameter()}")
         formParts.add("term=${term.encodeURLParameter()}")
-        if (campus.isNotEmpty()) { campus.forEach { formParts.add("campusFilter%5B%5D=${it.encodeURLParameter()}") } }
-        if (!subject.isNullOrEmpty()) subject.forEach { formParts.add("subject%5B%5D=${it.encodeURLParameter()}") }
-        if (courseNum != null && courseNum > 0) { formParts.add("courseNumber=${courseNum}") } else { formParts.add("courseNumber=") }
-        if (!openWaitlist.isNullOrEmpty()) { formParts.add("openWaitlist=$openWaitlist") } else { formParts.add("openWaitlist=") }
-        if (crn != null) formParts.add("crnNumber=${crn}") else formParts.add("crnNumber=")
-        if (level != null) formParts.add("level=$level") else formParts.add("level=")
-        if (courseTitle != null) formParts.add("courseTitle=$courseTitle") else formParts.add("courseTitle=")
+        campus.forEach { formParts.add("campusFilter%5B%5D=${it.encodeURLParameter()}") }
+        subject?.forEach { formParts.add("subject%5B%5D=${it.encodeURLParameter()}") }
+        formParts.add("courseNumber=${courseNum ?: ""}")
+        formParts.add("openWaitlist=${openWaitlist ?: ""}")
+        formParts.add("crnNumber=${crn ?: ""}")
+        formParts.add("level=${level ?: ""}")
+        formParts.add("courseTitle=${courseTitle ?: ""}")
         formParts.add("instructor=")
         formParts.add("instructorUid=")
-        if (creditHours!=null) formParts.add("creditHours=$creditHours") else formParts.add("creditHours=")
-        if (!startEndTime.isNullOrEmpty()) { startEndTime.forEach { formParts.add("startEndTime%5B%5D=${it.encodeURLParameter()}") } } else { formParts.add("startEndTime%5B%5D="); formParts.add("startEndTime%5B%5D=") }
+        formParts.add("creditHours=${creditHours ?: ""}")
+        startEndTime?.forEach { formParts.add("startEndTime%5B%5D=${it.encodeURLParameter()}") }
+            ?: formParts.addAll(listOf("startEndTime%5B%5D=", "startEndTime%5B%5D="))
         formParts.add("courseSearch=Find")
-        //not mandatory
-        if (!delivery.isNullOrEmpty()) { delivery.forEach { formParts.add("sectionAttributes%5B%5D=${it.encodeURLParameter()}") } } //could be empty
-        if (!attributes.isNullOrEmpty()) { attributes.forEach{formParts.add("sectionFilterAttributes%5B%5D=${it.encodeURLParameter()}")} } //could be empty
-        if (!partOfTerm.isNullOrEmpty()) { partOfTerm.forEach { formParts.add("partOfTerm%5B%5D=${it.encodeURLParameter()}") } }
-        if (!daysFilter.isNullOrEmpty()) { daysFilter.forEach { formParts.add("daysFilter%5B%5D=${it.encodeURLParameter()}") } }
+        delivery?.forEach { formParts.add("sectionAttributes%5B%5D=${it.encodeURLParameter()}") }
+        attributes?.forEach { formParts.add("sectionFilterAttributes%5B%5D=${it.encodeURLParameter()}") }
+        partOfTerm?.forEach { formParts.add("partOfTerm%5B%5D=${it.encodeURLParameter()}") }
+        daysFilter?.forEach { formParts.add("daysFilter%5B%5D=${it.encodeURLParameter()}") }
         val formBody = formParts.joinToString("&")
 
 //        println(formParts.joinToString("\n"))
@@ -56,7 +55,17 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
         return parse.parseCourses(resp.body)
     }
 
-//    suspend fun getScheduleByInfo(courses: List<String>? = emptyList()): List<Schedule>{
-//
-//    }
+    suspend fun getScheduleByCourses(courses: List<String>, campus: List<String>, term: String, optimizeFreeTime: Boolean? = false, preferredStart: String?, preferredEnd: String?): List<Schedule> {
+        val fetched = mutableMapOf<Pair<String, String>, List<Course>>()
+        for ((subject, num) in courses.mapNotNull { val p = it.trim().split(" "); if (p.size == 2) p[0] to p[1] else null }) { val sections = getCourseByInfo(subject = listOf(subject), courseNum = num, campus = campus, term = term); fetched[subject to num] = sections }
+        val valid = fetched.filterValues { it.isNotEmpty() }
+        if (valid.isEmpty()) throw QueryException("No valid schedules found")
+        val combos = parse.cartesianProduct(valid.values.toList())
+        if (combos.isEmpty()) throw QueryException("No schedule combos found")
+        val validCombos = combos.filter { combo -> !parse.timeConflicts(combo.map { it.delivery }, parse.toMinutes(preferredStart ?: "12:00am"), parse.toMinutes(preferredEnd ?: "11:59pm")) }
+        if (validCombos.isEmpty()) throw QueryException("No valid schedule combos found")
+        val schedules = validCombos.map { Schedule(it, parse.freeTimeForSchedule(it)) }
+        val result = if (optimizeFreeTime == true) schedules.sortedByDescending { it.freeTime } else schedules
+        return result.take(10)
+    }
 }

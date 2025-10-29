@@ -36,8 +36,8 @@ class CourseResolverTests {
             "GR", null, listOf("M"), 3, listOf("12:00 AM","11:59 PM")
         )
 
-        assertTrue(result is CourseResult.Success)
-        assertEquals(courses, (result as CourseResult.Success).courses)
+        assertTrue(result is SuccessCourse)
+        assertEquals(courses, (result as SuccessCourse).courses)
     }
 
     @Test
@@ -47,40 +47,40 @@ class CourseResolverTests {
 
         val result = resolver.getCourseByCRN(12345, "202620")
 
-        assertTrue(result is CourseResult.Success)
-        assertEquals(courses, (result as CourseResult.Success).courses)
+        assertTrue(result is SuccessCourse)
+        assertEquals(courses, (result as SuccessCourse).courses)
     }
 
     @Test
     fun `safeExecute handles TokenException`() = runBlocking {
         whenever(service.getCourseByCRN(any(), any())).thenThrow(TokenException("Token empty"))
         val result = resolver.getCourseByCRN(123, "202620")
-        assertTrue(result is CourseResult.Error)
-        assertEquals("TOKEN EXCEPTION", (result as CourseResult.Error).error)
+        assertTrue(result is ErrorCourse)
+        assertEquals("TOKEN EXCEPTION", (result as ErrorCourse).error)
     }
 
     @Test
     fun `safeExecute handles QueryException`() = runBlocking {
         whenever(service.getCourseByCRN(any(), any())).thenThrow(QueryException("Too many results"))
         val result = resolver.getCourseByCRN(123, "202620")
-        assertTrue(result is CourseResult.Error)
-        assertEquals("QUERY EXCEPTION", (result as CourseResult.Error).error)
+        assertTrue(result is ErrorCourse)
+        assertEquals("QUERY EXCEPTION", (result as ErrorCourse).error)
     }
 
     @Test
     fun `safeExecute handles IllegalArgumentException`() = runBlocking {
         whenever(service.getCourseByCRN(any(), any())).thenThrow(IllegalArgumentException("Invalid input"))
         val result = resolver.getCourseByCRN(123, "202620")
-        assertTrue(result is CourseResult.Error)
-        assertEquals("ILLEGAL ARGUMENT EXCEPTION", (result as CourseResult.Error).error)
+        assertTrue(result is ErrorCourse)
+        assertEquals("ILLEGAL ARGUMENT EXCEPTION", (result as ErrorCourse).error)
     }
 
     @Test
     fun `safeExecute handles NullPointerException`() = runBlocking {
         whenever(service.getCourseByCRN(any(), any())).thenThrow(NullPointerException("null"))
         val result = resolver.getCourseByCRN(123, "202620")
-        assertTrue(result is CourseResult.Error)
-        assertEquals("NULL POINTER EXCEPTION", (result as CourseResult.Error).error)
+        assertTrue(result is ErrorCourse)
+        assertEquals("NULL POINTER EXCEPTION", (result as ErrorCourse).error)
     }
 
     @Test
@@ -90,23 +90,23 @@ class CourseResolverTests {
         }
 
         val result = resolver.getCourseByCRN(123, "202620")
-        assertTrue(result is CourseResult.Error)
-        assertEquals("TIMEOUT EXCEPTION", (result as CourseResult.Error).error)
+        assertTrue(result is ErrorCourse)
+        assertEquals("TIMEOUT EXCEPTION", (result as ErrorCourse).error)
     }
 
     @Test
     fun `safeExecute handles network exceptions`() = runBlocking {
         whenever(service.getCourseByCRN(any(), any())).thenAnswer { throw IOException("IO error") }
         val result = resolver.getCourseByCRN(123, "202620")
-        assertTrue(result is CourseResult.Error)
-        assertEquals("NETWORK EXCEPTION", (result as CourseResult.Error).error)
+        assertTrue(result is ErrorCourse)
+        assertEquals("NETWORK EXCEPTION", (result as ErrorCourse).error)
     }
 
     @Test
     fun `safeExecute handles unknown exceptions`() = runBlocking {
         whenever(service.getCourseByCRN(any(), any())).thenThrow(RuntimeException("unknown"))
         val result = resolver.getCourseByCRN(123, "202620")
-        assertTrue(result is CourseResult.Error)
-        assertEquals("UNKNOWN EXCEPTION", (result as CourseResult.Error).error)
+        assertTrue(result is ErrorCourse)
+        assertEquals("UNKNOWN EXCEPTION", (result as ErrorCourse).error)
     }
 }

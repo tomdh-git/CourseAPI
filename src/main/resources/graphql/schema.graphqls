@@ -10,17 +10,29 @@ type Course {
     requests: String
     delivery: String
 }
-
-type Success {
+type Schedule{
     courses: [Course]
+    freeTime: Int
 }
 
-type Error {
+type SuccessCourse {
+    courses: [Course]
+}
+type SuccessSchedule{
+    schedules: [Schedule]
+}
+
+type ErrorCourse {
+    error: String
+    message: String
+}
+type ErrorSchedule {
     error: String
     message: String
 }
 
-union CourseResult = Success | Error
+union CourseResult = SuccessCourse | ErrorCourse
+union ScheduleResult = SuccessSchedule | ErrorSchedule
 
 type Query {
     getCourseByInfo(
@@ -43,4 +55,12 @@ type Query {
         crn: Int
         term: String
     ): CourseResult
+    getScheduleByCourses(
+        courses: [String]
+        campus: [String]
+        term: String
+        optimizeFreeTime: Boolean
+        preferredStart: String
+        preferredEnd: String
+    ): ScheduleResult
 }
