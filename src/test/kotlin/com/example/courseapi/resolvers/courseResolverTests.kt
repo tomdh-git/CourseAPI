@@ -1,7 +1,9 @@
 package com.example.courseapi.resolvers
 
 import com.example.courseapi.exceptions.*
-import com.example.courseapi.models.*
+import com.example.courseapi.models.course.Course
+import com.example.courseapi.models.course.ErrorCourse
+import com.example.courseapi.models.course.SuccessCourse
 import com.example.courseapi.services.CourseService
 import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.delay

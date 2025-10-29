@@ -1,7 +1,8 @@
 package com.example.courseapi.repos
 
 import com.example.courseapi.exceptions.*
-import com.example.courseapi.models.*
+import com.example.courseapi.models.course.Course
+import com.example.courseapi.models.schedule.Schedule
 import io.ktor.http.encodeURLParameter
 import org.springframework.stereotype.Repository
 import com.example.courseapi.services.*

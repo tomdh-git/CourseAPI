@@ -1,4 +1,4 @@
-package com.example.courseapi.models
+package com.example.courseapi.models.course
 
 sealed interface CourseResult
 data class SuccessCourse(

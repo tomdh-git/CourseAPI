@@ -1,6 +1,6 @@
 package com.example.courseapi.services
 
-import com.example.courseapi.models.Course
+import com.example.courseapi.models.course.Course
 import org.jsoup.Jsoup
 import org.springframework.stereotype.Service
 import kotlin.collections.map

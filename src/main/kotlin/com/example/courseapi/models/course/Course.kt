@@ -1,4 +1,4 @@
-package com.example.courseapi.models
+package com.example.courseapi.models.course
 
 data class Course(
     val subject: String = "",

@@ -1,4 +1,4 @@
-package com.example.courseapi.models
+package com.example.courseapi.models.input
 
 val ValidDays = listOf<String>(
     "U",
