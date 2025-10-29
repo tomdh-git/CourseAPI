@@ -5,6 +5,9 @@ import com.example.courseapi.models.*
 import io.ktor.http.encodeURLParameter
 import org.springframework.stereotype.Repository
 import com.example.courseapi.services.*
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 @Repository
 class CourseRepo(private val requests: RequestService, private val parse: ParseService){
@@ -55,17 +58,27 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
         return parse.parseCourses(resp.body)
     }
 
-    suspend fun getScheduleByCourses(courses: List<String>, campus: List<String>, term: String, optimizeFreeTime: Boolean? = false, preferredStart: String?, preferredEnd: String?): List<Schedule> {
-        val fetched = mutableMapOf<Pair<String, String>, List<Course>>()
-        for ((subject, num) in courses.mapNotNull { val p = it.trim().split(" "); if (p.size == 2) p[0] to p[1] else null }) { val sections = getCourseByInfo(subject = listOf(subject), courseNum = num, campus = campus, term = term); fetched[subject to num] = sections }
-        val valid = fetched.filterValues { it.isNotEmpty() }
-        if (valid.isEmpty()) throw QueryException("No valid schedules found")
-        val combos = parse.cartesianProduct(valid.values.toList())
-        if (combos.isEmpty()) throw QueryException("No schedule combos found")
-        val validCombos = combos.filter { combo -> !parse.timeConflicts(combo.map { it.delivery }, parse.toMinutes(preferredStart ?: "12:00am"), parse.toMinutes(preferredEnd ?: "11:59pm")) }
-        if (validCombos.isEmpty()) throw QueryException("No valid schedule combos found")
-        val schedules = validCombos.map { Schedule(it, parse.freeTimeForSchedule(it)) }
-        val result = if (optimizeFreeTime == true) schedules.sortedByDescending { it.freeTime } else schedules
-        return result.take(10)
-    }
+    suspend fun getScheduleByCourses(courses: List<String>, campus: List<String>, term: String, optimizeFreeTime: Boolean? = false, preferredStart: String?, preferredEnd: String?): List<Schedule> =
+        coroutineScope{
+            val parsed = courses.mapNotNull {
+                val p = it.trim().split(" ")
+                if (p.size == 2) p[0] to p[1] else null
+            }
+            val fetched = parsed.map { (subject, num) ->
+                async {
+                    val sections = getCourseByInfo(subject = listOf(subject), courseNum = num, campus = campus, term = term)
+                    (subject to num) to sections
+                }
+            }.awaitAll().toMap()
+            val valid = fetched.filterValues { it.isNotEmpty() }
+            if (valid.isEmpty()) throw QueryException("No valid schedules found")
+            val combos = parse.cartesianProduct(valid.values.toList())
+            println(combos.size)//58320
+            if (combos.isEmpty()) throw QueryException("No schedule combos found")
+            val validCombos = combos.filter { combo -> !parse.timeConflicts(combo.map { it.delivery }, parse.toMinutes(preferredStart ?: "12:00am"), parse.toMinutes(preferredEnd ?: "11:59pm")) }
+            if (validCombos.isEmpty()) throw QueryException("No valid schedule combos found")
+            val schedules = validCombos.map { Schedule(it, parse.freeTimeForSchedule(it)) }
+            val result = if (optimizeFreeTime == true) schedules.sortedByDescending { it.freeTime } else schedules
+            result.take(10)
+        }
 }

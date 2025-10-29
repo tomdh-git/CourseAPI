@@ -14,17 +14,17 @@ import org.springframework.stereotype.Controller
 class CourseResolver(private val service: CourseService) {
     @QueryMapping
     suspend fun getCourseByInfo(@Argument subject: List<String>?, @Argument courseNum: String?, @Argument campus: List<String>, @Argument attributes: List<String>?, @Argument delivery: List<String>?, @Argument term: String, @Argument openWaitlist: String?, @Argument crn: Int?, @Argument partOfTerm: List<String>?, @Argument level: String?, @Argument courseTitle: String?, @Argument daysFilter: List<String>?, @Argument creditHours: Int?, @Argument startEndTime: List<String>?): CourseResult {
-        return safeExecute<List<Course>,CourseResult> ({ service.getCourseByInfo(subject, courseNum, campus, attributes, delivery, term, openWaitlist, crn, partOfTerm, level, courseTitle, daysFilter, creditHours, startEndTime) }, {SuccessCourse(it)}, { code, msg -> ErrorCourse(code, msg) })
+        return safeExecute ({ service.getCourseByInfo(subject, courseNum, campus, attributes, delivery, term, openWaitlist, crn, partOfTerm, level, courseTitle, daysFilter, creditHours, startEndTime) }, {SuccessCourse(it)}, { code, msg -> ErrorCourse(code, msg) })
     }
 
     @QueryMapping
     suspend fun getCourseByCRN(@Argument crn: Int?, @Argument term: String): CourseResult {
-        return safeExecute<List<Course>,CourseResult> ({ service.getCourseByCRN(crn, term) }, {SuccessCourse(it)}, { code, msg -> ErrorCourse(code, msg) })
+        return safeExecute ({ service.getCourseByCRN(crn, term) }, {SuccessCourse(it)}, { code, msg -> ErrorCourse(code, msg) })
     }
 
     @QueryMapping
     suspend fun getScheduleByCourses(@Argument courses: List<String>, @Argument campus: List<String>, @Argument term: String, @Argument optimizeFreeTime: Boolean?, @Argument preferredStart: String?, @Argument preferredEnd: String?): ScheduleResult {
-        return safeExecute<List<Schedule>,ScheduleResult> ({ service.getScheduleByCourses(courses, campus, term, optimizeFreeTime, preferredStart, preferredEnd) }, {SuccessSchedule(it)}, { code, msg -> ErrorSchedule(code, msg) })
+        return safeExecute ({ service.getScheduleByCourses(courses, campus, term, optimizeFreeTime, preferredStart, preferredEnd) }, {SuccessSchedule(it)}, { code, msg -> ErrorSchedule(code, msg) })
     }
 //   getFillerByAttributes,
 

@@ -1,7 +1,6 @@
 package com.example.courseapi.services
 
 import com.example.courseapi.models.Course
-import com.example.courseapi.repos.CourseRepo
 import org.jsoup.Jsoup
 import org.springframework.stereotype.Service
 import kotlin.collections.map
@@ -19,7 +18,7 @@ class ParseService{
             val tds = tr.select("td")
             if (tds.size < 9) continue
             val subject = tds[0].ownText().trim()
-            val courseNum = tds[1].text().trim().toIntOrNull() ?: 0
+            val courseNum = tds[1].text().trim()
             val title = tds[2].text().trim()
             val section = tds[3].text().trim()
             val crn = tds[4].text().trim().filter { it.isDigit() }.toIntOrNull() ?: 0
@@ -28,7 +27,7 @@ class ParseService{
             val capacity = tds[7].text().trim()
             val requests = tds[8].text().trim()
             val delivery = tds.getOrNull(9)?.text()?.trim() ?: ""
-            if (subject.isEmpty() && courseNum == 0 && title.isEmpty()) continue
+            if (subject.isEmpty() && courseNum == "" && title.isEmpty()) continue
             list.add(Course(subject, courseNum, title, section, crn, campus, credits, capacity, requests, delivery)
             )
         }

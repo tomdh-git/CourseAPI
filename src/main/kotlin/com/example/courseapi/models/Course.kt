@@ -2,7 +2,7 @@ package com.example.courseapi.models
 
 data class Course(
     val subject: String = "",
-    val courseNum: Int = 0,
+    val courseNum: String = "",
     val title: String = "",
     val section: String = "",
     val crn: Int = 0,

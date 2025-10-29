@@ -1,6 +1,6 @@
 type Course {
     subject: String
-    courseNum: Int
+    courseNum: String
     title: String
     section: String
     crn: Int
@@ -37,7 +37,7 @@ union ScheduleResult = SuccessSchedule | ErrorSchedule
 type Query {
     getCourseByInfo(
         subject: [String]
-        courseNum: Int
+        courseNum: String
         campus: [String]
         attributes: [String]
         delivery: [String]
