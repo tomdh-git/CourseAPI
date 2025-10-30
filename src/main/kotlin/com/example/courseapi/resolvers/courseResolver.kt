@@ -7,7 +7,6 @@ import com.example.courseapi.models.course.CourseResult
 import com.example.courseapi.models.course.ErrorCourse
 import com.example.courseapi.models.course.SuccessCourse
 import com.example.courseapi.models.schedule.ErrorSchedule
-import com.example.courseapi.models.schedule.Schedule
 import com.example.courseapi.models.schedule.ScheduleResult
 import com.example.courseapi.models.schedule.SuccessSchedule
 import com.example.courseapi.services.CourseService
@@ -34,10 +33,9 @@ class CourseResolver(private val service: CourseService) {
     }
 
     @QueryMapping
-    suspend fun getFillerByAttributes(@Argument attributes: List<String>, @Argument schedule: Schedule, @Argument campus: List<String>, @Argument term: String, @Argument preferredStart: String?, @Argument preferredEnd: String?): ScheduleResult{
-        return safeExecute ({ service.getFillerByAttributes(attributes, schedule, campus, term, preferredStart, preferredEnd) }, { SuccessSchedule(it) }, { code, msg -> ErrorSchedule(code, msg) })
+    suspend fun getFillerByAttributes(@Argument attributes: List<String>, @Argument courses: List<String>, @Argument campus: List<String>, @Argument term: String, @Argument preferredStart: String?, @Argument preferredEnd: String?): ScheduleResult{
+        return safeExecute ({ service.getFillerByAttributes(attributes, courses, campus, term, preferredStart, preferredEnd) }, { SuccessSchedule(it) }, { code, msg -> ErrorSchedule(code, msg) })
     }
-
 }
 
 private suspend fun <T, R> safeExecute(action: suspend () -> T, wrap: (T) -> R, makeError: (String, String?) -> R): R {

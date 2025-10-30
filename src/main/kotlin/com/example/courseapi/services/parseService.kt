@@ -1,6 +1,7 @@
 package com.example.courseapi.services
 
 import com.example.courseapi.models.course.Course
+import com.example.courseapi.models.schedule.Schedule
 import org.jsoup.Jsoup
 import org.springframework.stereotype.Service
 import kotlin.collections.map
@@ -90,6 +91,28 @@ class ParseService{
             total += (23 * 60) - last
         }
         return total
+    }
+
+    fun getFreeSlots(schedule: Schedule): Map<Day, List<Pair<Int, Int>>> {
+        val occupied = mutableMapOf<Day, MutableList<Pair<Int, Int>>>()
+        for (c in schedule.courses) {
+            for (iv in parseTimeSlot(c.delivery))
+                occupied.computeIfAbsent(iv.day) { mutableListOf() }.add(iv.start to iv.end)
+        }
+
+        val free = mutableMapOf<Day, MutableList<Pair<Int, Int>>>()
+        for ((day, blocks) in occupied) {
+            val sorted = blocks.sortedBy { it.first }
+            var prevEnd = 0
+            val dailyFree = mutableListOf<Pair<Int, Int>>()
+            for ((start, end) in sorted) {
+                if (start > prevEnd) dailyFree.add(prevEnd to start)
+                prevEnd = end
+            }
+            if (prevEnd < 1440) dailyFree.add(prevEnd to 1440)
+            free[day] = dailyFree
+        }
+        return free
     }
 
     fun <T> cartesianProduct(lists: List<List<T>>): List<List<T>> {

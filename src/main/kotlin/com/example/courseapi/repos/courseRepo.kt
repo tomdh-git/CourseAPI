@@ -70,6 +70,21 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
             if (validCombos.isEmpty()) throw QueryException("No valid schedule combos found")
             val schedules = validCombos.map { Schedule(it, parse.freeTimeForSchedule(it)) }
             val result = if (optimizeFreeTime == true) schedules.sortedByDescending { it.freeTime } else schedules
-            result.take(10)
+            result
         }
+
+    suspend fun getFillerByAttributes(attributes: List<String>, courses: List<String>, campus: List<String>, term: String, preferredStart: String? = null, preferredEnd: String? = null): List<Schedule>{
+        val attributesList = getCourseByInfo(campus = campus, term = term, attributes = attributes)
+        val schedules = getScheduleByCourses(courses, campus, term, true, preferredStart, preferredEnd)
+        val result = mutableListOf<Schedule>()
+        for (s in schedules) {
+            val freeSlots = parse.getFreeSlots(s)
+            val fillers = attributesList.filter { filler ->
+                val slot = parse.parseTimeSlot(filler.delivery)
+                slot.all { iv -> freeSlots[iv.day]?.any { (fs, fe) -> iv.start >= fs && iv.end <= fe } == true }
+            }
+            if (fillers.isNotEmpty()) { result.add(s.copy(courses = s.courses + fillers.first())) }
+        }
+        return result
+    }
 }

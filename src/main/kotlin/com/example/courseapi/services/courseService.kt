@@ -2,12 +2,7 @@ package com.example.courseapi.services
 
 import com.example.courseapi.exceptions.QueryException
 import com.example.courseapi.models.course.Course
-import com.example.courseapi.models.input.ValidCampuses
-import com.example.courseapi.models.input.ValidDays
-import com.example.courseapi.models.input.ValidDeliveryTypes
-import com.example.courseapi.models.input.ValidLevels
-import com.example.courseapi.models.input.ValidSubjects
-import com.example.courseapi.models.input.ValidWaitListTypes
+import com.example.courseapi.models.input.*
 import com.example.courseapi.models.schedule.Schedule
 import com.example.courseapi.repos.CourseRepo
 import org.springframework.stereotype.Service
@@ -35,11 +30,16 @@ class CourseService(private val repo: CourseRepo, private val parseService: Pars
         if (campus.isEmpty() || !campus.all{it in ValidCampuses }) throw IllegalArgumentException("Campuses empty or invalid")
         if (term.isEmpty()) throw IllegalArgumentException("Term cannot be empty")
         if ((!preferredStart.isNullOrEmpty()&&preferredEnd.isNullOrEmpty())||(!preferredEnd.isNullOrEmpty() && preferredStart.isNullOrEmpty())) throw IllegalArgumentException("Preferred start and end fields must be specified together")
-        if (parseService.toMinutes(preferredStart?:"12:01am")>=parseService.toMinutes(preferredEnd?:"12:00am")) throw IllegalArgumentException("Preferred start must be before preferred end")
+        if ((preferredStart!=null && preferredEnd!=null)&&parseService.toMinutes(preferredStart)>=parseService.toMinutes(preferredEnd)) throw IllegalArgumentException("Preferred start must be before preferred end")
         return repo.getScheduleByCourses(courses, campus, term, optimizeFreeTime, preferredStart, preferredEnd)
     }
 
-    suspend fun getFillerByAttributes(attributes: List<String>, schedule: Schedule, campus: List<String>, term: String, preferredStart: String? = null, preferredEnd: String? = null): List<Schedule>{
-        return emptyList()
+    suspend fun getFillerByAttributes(attributes: List<String>, courses: List<String>, campus: List<String>, term: String, preferredStart: String? = null, preferredEnd: String? = null): List<Schedule>{
+        if (campus.isEmpty() || !campus.all{it in ValidCampuses }) throw IllegalArgumentException("Campuses empty or invalid")
+        if (term.isEmpty()) throw IllegalArgumentException("Term cannot be empty")
+        if ((!preferredStart.isNullOrEmpty()&&preferredEnd.isNullOrEmpty())||(!preferredEnd.isNullOrEmpty() && preferredStart.isNullOrEmpty())) throw IllegalArgumentException("Preferred start and end fields must be specified together")
+        if ((preferredStart!=null && preferredEnd!=null)&&parseService.toMinutes(preferredStart)>=parseService.toMinutes(preferredEnd)) throw IllegalArgumentException("Preferred start must be before preferred end")
+        if (!((attributes.isNotEmpty() && attributes.all{it in ValidAttributes }))) throw IllegalArgumentException("Invalid attributes field")
+        return repo.getFillerByAttributes(attributes, courses, campus, term, preferredStart, preferredEnd)
     }
 }
