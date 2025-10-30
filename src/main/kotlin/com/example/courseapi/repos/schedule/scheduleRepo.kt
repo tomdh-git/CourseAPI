@@ -1,39 +1,58 @@
-package com.example.courseapi.services
+package com.example.courseapi.repos.schedule
 
+import com.example.courseapi.exceptions.QueryException
 import com.example.courseapi.models.course.Course
 import com.example.courseapi.models.schedule.Schedule
-import org.jsoup.Jsoup
-import org.springframework.stereotype.Service
-import kotlin.collections.map
+import com.example.courseapi.repos.course.CourseRepo
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import org.springframework.stereotype.Repository
+import kotlin.collections.iterator
+import kotlin.collections.zipWithNext
 
-@Service
-class ParseService{
+@Repository
+class ScheduleRepo(private val course: CourseRepo){
+    suspend fun getScheduleByCourses(courses: List<String>, campus: List<String>, term: String, optimizeFreeTime: Boolean? = false, preferredStart: String?, preferredEnd: String?): List<Schedule> = coroutineScope{
+        val parsed = courses.mapNotNull { val p = it.trim().split(" "); if (p.size == 2) p[0] to p[1] else null }
+        val fetched = parsed.map {
+            (subject, num) ->
+            async {
+                val sections = course.getCourseByInfo(subject = listOf(subject), courseNum = num, campus = campus, term = term)
+                subject to num to sections
+            }
+        }.awaitAll().groupBy(
+            { it.first },
+            { it.second }
+        ).mapValues { it.value.flatten() }
+        val valid = fetched.filterValues { it.isNotEmpty() }
+        if (valid.isEmpty()) throw QueryException("No valid schedules found")
+        val combos = cartesianProduct(valid.values.toList())
+        if (combos.isEmpty()) throw QueryException("No schedule combos found")
+        val validCombos = combos.filter { combo -> !timeConflicts(combo.map { it.delivery }, toMinutes(preferredStart ?: "12:00am"), toMinutes(preferredEnd ?: "11:59pm")) }
+        if (validCombos.isEmpty()) throw QueryException("No valid schedule combos found")
+        val schedules = validCombos.map { Schedule(it, freeTimeForSchedule(it)) }
+        val result = if (optimizeFreeTime == true) schedules.sortedByDescending { it.freeTime } else schedules
+        result
+    }
+
+    suspend fun getFillerByAttributes(attributes: List<String>, courses: List<String>, campus: List<String>, term: String, preferredStart: String? = null, preferredEnd: String? = null): List<Schedule>{
+        val attributesList = course.getCourseByInfo(campus = campus, term = term, attributes = attributes)
+        val schedules = getScheduleByCourses(courses, campus, term, true, preferredStart, preferredEnd)
+        val result = mutableListOf<Schedule>()
+        for (s in schedules) {
+            val freeSlots = getFreeSlots(s)
+            val fillers = attributesList.filter { filler ->
+                val slot = parseTimeSlot(filler.delivery)
+                slot.all { iv -> freeSlots[iv.day]?.any { (fs, fe) -> iv.start >= fs && iv.end <= fe } == true }
+            }
+            if (fillers.isNotEmpty()) { result.add(s.copy(courses = s.courses + fillers.first())) }
+        }
+        return result
+    }
+
     enum class Day { M, T, W, R, F, S, U }
     data class Interval(val day: Day, val start: Int, val end: Int)
-
-    fun parseCourses(html: String): List<Course> {
-        val doc = Jsoup.parse(html)
-        val rows = doc.select("tr.resultrow")
-        val list = mutableListOf<Course>()
-        for (tr in rows) {
-            val tds = tr.select("td")
-            if (tds.size < 9) continue
-            val subject = tds[0].ownText().trim()
-            val courseNum = tds[1].text().trim()
-            val title = tds[2].text().trim()
-            val section = tds[3].text().trim()
-            val crn = tds[4].text().trim().filter { it.isDigit() }.toIntOrNull() ?: 0
-            val campus = tds[5].text().trim()
-            val credits = tds[6].text().trim().toIntOrNull() ?: 0
-            val capacity = tds[7].text().trim()
-            val requests = tds[8].text().trim()
-            val delivery = tds.getOrNull(9)?.text()?.trim() ?: ""
-            if (subject.isEmpty() && courseNum == "" && title.isEmpty()) continue
-            list.add(Course(subject, courseNum, title, section, crn, campus, credits, capacity, requests, delivery)
-            )
-        }
-        return list
-    }
 
     fun toMinutes(t: String): Int {
         val (hStr, mStr, period) = (Regex("^(\\d{1,2}):(\\d{2})(am|pm)", RegexOption.IGNORE_CASE).matchEntire(t.trim()) ?: return 0).destructured
@@ -120,3 +139,4 @@ class ParseService{
         return lists.fold(listOf(listOf<T>())) { acc, list -> acc.flatMap { a -> list.map { a + it } } }
     }
 }
+

@@ -1,5 +1,6 @@
 package com.example.courseapi.services
 
+import com.example.courseapi.services.course.ParseService
 import org.junit.jupiter.api.Test
 
 class ParseServiceTest {

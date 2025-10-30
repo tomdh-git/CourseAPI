@@ -1,4 +1,4 @@
-package com.example.courseapi.services
+package com.example.courseapi.services.course
 
 import io.ktor.client.*
 import io.ktor.client.request.*

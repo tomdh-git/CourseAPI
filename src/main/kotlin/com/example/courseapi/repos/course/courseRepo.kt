@@ -1,14 +1,11 @@
-package com.example.courseapi.repos
+package com.example.courseapi.repos.course
 
 import com.example.courseapi.exceptions.*
 import com.example.courseapi.models.course.Course
-import com.example.courseapi.models.schedule.Schedule
 import io.ktor.http.encodeURLParameter
 import org.springframework.stereotype.Repository
-import com.example.courseapi.services.*
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
+import com.example.courseapi.services.course.ParseService
+import com.example.courseapi.services.course.RequestService
 
 @Repository
 class CourseRepo(private val requests: RequestService, private val parse: ParseService){
@@ -57,34 +54,5 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
         if (resp.body.contains("Your query returned too many results.", ignoreCase = true)) { throw QueryException("Query returned too many results.") }
         // parse
         return parse.parseCourses(resp.body)
-    }
-
-    suspend fun getScheduleByCourses(courses: List<String>, campus: List<String>, term: String, optimizeFreeTime: Boolean? = false, preferredStart: String?, preferredEnd: String?): List<Schedule> = coroutineScope{
-            val parsed = courses.mapNotNull { val p = it.trim().split(" "); if (p.size == 2) p[0] to p[1] else null }
-            val fetched = parsed.map { (subject, num) -> async { val sections = getCourseByInfo(subject = listOf(subject), courseNum = num, campus = campus, term = term); subject to num to sections } }.awaitAll().groupBy({ it.first }, { it.second }).mapValues { it.value.flatten() }
-            val valid = fetched.filterValues { it.isNotEmpty() }
-            if (valid.isEmpty()) throw QueryException("No valid schedules found")
-            val combos = parse.cartesianProduct(valid.values.toList())
-            if (combos.isEmpty()) throw QueryException("No schedule combos found")
-            val validCombos = combos.filter { combo -> !parse.timeConflicts(combo.map { it.delivery }, parse.toMinutes(preferredStart ?: "12:00am"), parse.toMinutes(preferredEnd ?: "11:59pm")) }
-            if (validCombos.isEmpty()) throw QueryException("No valid schedule combos found")
-            val schedules = validCombos.map { Schedule(it, parse.freeTimeForSchedule(it)) }
-            val result = if (optimizeFreeTime == true) schedules.sortedByDescending { it.freeTime } else schedules
-            result
-        }
-
-    suspend fun getFillerByAttributes(attributes: List<String>, courses: List<String>, campus: List<String>, term: String, preferredStart: String? = null, preferredEnd: String? = null): List<Schedule>{
-        val attributesList = getCourseByInfo(campus = campus, term = term, attributes = attributes)
-        val schedules = getScheduleByCourses(courses, campus, term, true, preferredStart, preferredEnd)
-        val result = mutableListOf<Schedule>()
-        for (s in schedules) {
-            val freeSlots = parse.getFreeSlots(s)
-            val fillers = attributesList.filter { filler ->
-                val slot = parse.parseTimeSlot(filler.delivery)
-                slot.all { iv -> freeSlots[iv.day]?.any { (fs, fe) -> iv.start >= fs && iv.end <= fe } == true }
-            }
-            if (fillers.isNotEmpty()) { result.add(s.copy(courses = s.courses + fillers.first())) }
-        }
-        return result
     }
 }

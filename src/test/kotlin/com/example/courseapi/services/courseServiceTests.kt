@@ -1,5 +1,6 @@
 package com.example.courseapi.services
 
+import com.example.courseapi.services.course.CourseService
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows

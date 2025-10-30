@@ -3,8 +3,9 @@ import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.*
-import com.example.courseapi.services.*
-import com.example.courseapi.repos.*
+import com.example.courseapi.repos.course.CourseRepo
+import com.example.courseapi.services.course.ParseService
+import com.example.courseapi.services.course.RequestService
 
 class CourseRepoTest {
     private val requests: RequestService = mock()
