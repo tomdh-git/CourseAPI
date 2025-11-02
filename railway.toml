@@ -1,5 +1,5 @@
 [build]
-builder = "paketobuildpacks/builder-jammy-buildpack"
+nixpacks = true
 
 [build.env]
 BP_JAVA_VERSION = "17"
