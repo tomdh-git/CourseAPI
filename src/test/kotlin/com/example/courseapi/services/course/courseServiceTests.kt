@@ -1,6 +1,5 @@
-package com.example.courseapi.services
+package com.example.courseapi.services.course
 
-import com.example.courseapi.services.course.CourseService
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -19,6 +18,15 @@ class CourseServiceValidationTest {
             .thenCallRealMethod()
         assertThrows<IllegalArgumentException> {
             runBlocking { service.getCourseByInfo(campus = emptyList(), term = "202620") }
+        }
+    }
+
+    @Test
+    fun `throws exception when campus invalid`() {
+        whenever(runBlocking { service.getCourseByInfo(campus = listOf("INVALID"), term = "202620") })
+            .thenCallRealMethod()
+        assertThrows<IllegalArgumentException> {
+            runBlocking { service.getCourseByInfo(campus = listOf("INVALID"), term = "202620") }
         }
     }
 
@@ -50,7 +58,7 @@ class CourseServiceValidationTest {
     }
 
     @Test
-    fun `throws exception when startEndTime invalid`() {
+    fun `throws exception when startEndTime invalid size`() {
         whenever(runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", startEndTime = listOf("12:00 AM")) })
             .thenCallRealMethod()
         assertThrows<IllegalArgumentException> {
@@ -82,6 +90,33 @@ class CourseServiceValidationTest {
             .thenCallRealMethod()
         assertThrows<IllegalArgumentException> {
             runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", daysFilter = listOf("X")) }
+        }
+    }
+
+    @Test
+    fun `throws exception when partOfTerm invalid`() {
+        whenever(runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", partOfTerm = listOf("INVALID")) })
+            .thenCallRealMethod()
+        assertThrows<IllegalArgumentException> {
+            runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", partOfTerm = listOf("INVALID")) }
+        }
+    }
+
+    @Test
+    fun `throws exception when courseNum invalid format`() {
+        whenever(runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", courseNum = "ABC123") })
+            .thenCallRealMethod()
+        assertThrows<IllegalArgumentException> {
+            runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", courseNum = "ABC123") }
+        }
+    }
+
+    @Test
+    fun `throws exception when creditHours negative`() {
+        whenever(runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", creditHours = -3) })
+            .thenCallRealMethod()
+        assertThrows<IllegalArgumentException> {
+            runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", creditHours = -3) }
         }
     }
 }

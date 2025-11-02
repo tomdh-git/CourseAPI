@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class ScheduleService(private val repo: ScheduleRepo){
-    suspend fun getScheduleByCourses(courses: List<String>, campus: List<String>, term: String, optimizeFreeTime: Boolean? = false, preferredStart: String?, preferredEnd: String?): List<Schedule> {
+    suspend fun getScheduleByCourses(courses: List<String>, campus: List<String>, term: String, optimizeFreeTime: Boolean? = false, preferredStart: String?=null, preferredEnd: String?=null): List<Schedule> {
         if (campus.isEmpty() || !campus.all{it in ValidCampuses }) throw IllegalArgumentException("Campuses empty or invalid")
         if (term.isEmpty()) throw IllegalArgumentException("Term cannot be empty")
         if ((!preferredStart.isNullOrEmpty()&&preferredEnd.isNullOrEmpty())||(!preferredEnd.isNullOrEmpty() && preferredStart.isNullOrEmpty())) throw IllegalArgumentException("Preferred start and end fields must be specified together")
