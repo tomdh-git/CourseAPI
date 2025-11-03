@@ -6,5 +6,6 @@ import org.springframework.boot.runApplication
 class CourseapiApplication
 
 fun main(args: Array<String>) {
+    println("Running on port: " + System.getenv("PORT"));
     runApplication<CourseapiApplication>(*args)
 }
