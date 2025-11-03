@@ -1,9 +1,10 @@
 [build]
-nixpacks = true
-
-[build.packages]
-jdk17 = "jdk"
+builder = "nixpacks"
 
 [build.env]
-JAVA_HOME = "/usr/lib/jvm/java-17-openjdk-amd64"
 BP_JAVA_VERSION = "17"
+
+[build.nixpacks]
+phases.setup.systemPkgs = [
+    "jdk17_headless"
+]
