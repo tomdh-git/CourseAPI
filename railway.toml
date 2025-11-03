@@ -1,5 +1,9 @@
 [build]
 nixpacks = true
 
+[build.packages]
+jdk17 = "jdk"
+
 [build.env]
+JAVA_HOME = "/usr/lib/jvm/java-17-openjdk-amd64"
 BP_JAVA_VERSION = "17"
