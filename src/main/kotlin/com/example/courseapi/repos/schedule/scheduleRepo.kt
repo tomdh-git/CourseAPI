@@ -14,26 +14,44 @@ import kotlin.collections.zipWithNext
 @Repository
 class ScheduleRepo(private val course: CourseRepo){
     suspend fun getScheduleByCourses(courses: List<String>, campus: List<String>, term: String, optimizeFreeTime: Boolean? = false, preferredStart: String?, preferredEnd: String?): List<Schedule> = coroutineScope{
-        val parsed = courses.mapNotNull { val p = it.trim().split(" "); if (p.size == 2) p[0] to p[1] else null }
-        val fetched = parsed.map {
-            (subject, num) ->
+        val parsed = courses.mapNotNull {
+            val p = it.trim().split(" ")
+            if (p.size == 2) p[0] to p[1] else null
+        }
+
+        val fetched = parsed.map { (subject, num) ->
             async {
-                val sections = course.getCourseByInfo(subject = listOf(subject), courseNum = num, campus = campus, term = term)
+                val sections = course.getCourseByInfo(
+                    subject = listOf(subject),
+                    courseNum = num,
+                    campus = campus,
+                    term = term
+                )
                 subject to num to sections
             }
         }.awaitAll().groupBy(
             { it.first },
             { it.second }
         ).mapValues { it.value.flatten() }
+
         val valid = fetched.filterValues { it.isNotEmpty() }
         if (valid.isEmpty()) throw QueryException("No valid schedules found")
+
         val combos = cartesianProduct(valid.values.toList())
         if (combos.isEmpty()) throw QueryException("No schedule combos found")
-        val validCombos = combos.filter { combo -> !timeConflicts(combo.map { it.delivery }, toMinutes(preferredStart ?: "12:00am"), toMinutes(preferredEnd ?: "11:59pm")) }
+
+        val startMin = toMinutes(preferredStart ?: "12:00am")
+        val endMin = toMinutes(preferredEnd ?: "11:59pm")
+
+        val validCombos = combos.asSequence().filter { combo ->
+            // Pass a Sequence of deliveries, no asIterable or intermediate list
+            !timeConflicts(combo.asSequence().map { it.delivery }, startMin, endMin)
+        }.toList()
+
         if (validCombos.isEmpty()) throw QueryException("No valid schedule combos found")
+
         val schedules = validCombos.map { Schedule(it, freeTimeForSchedule(it)) }
-        val result = if (optimizeFreeTime == true) schedules.sortedByDescending { it.freeTime } else schedules
-        result
+        if (optimizeFreeTime == true) schedules.sortedByDescending { it.freeTime } else schedules
     }
 
     suspend fun getFillerByAttributes(attributes: List<String>, courses: List<String>, campus: List<String>, term: String, preferredStart: String? = null, preferredEnd: String? = null): List<Schedule>{
@@ -53,9 +71,11 @@ class ScheduleRepo(private val course: CourseRepo){
 
     enum class Day { M, T, W, R, F, S, U }
     data class Interval(val day: Day, val start: Int, val end: Int)
+    val toMinutesRegex = Regex("^(\\d{1,2}):(\\d{2})(am|pm)", RegexOption.IGNORE_CASE)
 
     fun toMinutes(t: String): Int {
-        val (hStr, mStr, period) = (Regex("^(\\d{1,2}):(\\d{2})(am|pm)", RegexOption.IGNORE_CASE).matchEntire(t.trim()) ?: return 0).destructured
+        val match = toMinutesRegex.matchEntire(t.trim()) ?: return 0
+        val (hStr, mStr, period) = match.destructured
         var h = hStr.toInt()
         if (h == 12) h = 0
         if (period.lowercase() == "pm") h += 12
@@ -68,30 +88,48 @@ class ScheduleRepo(private val course: CourseRepo){
         else -> null
     }
 
-    fun parseTimeSlot(slot: String): List<Interval> {
-        val regex = Regex("""([MTWRFSU]+)\s+(\d{1,2}:\d{2}[ap]m)-(\d{1,2}:\d{2}[ap]m)""", RegexOption.IGNORE_CASE)
-        val matches = regex.findAll(slot)
-        return matches.flatMap { m ->
-            val (daysStr, startStr, endStr) = m.destructured
-            val start = toMinutes(startStr)
-            val end = toMinutes(endStr)
-            val days = daysStr.mapNotNull { charToDay(it) }
-            days.map { Interval(it, start, end) }
-        }.toList()
-    }
+    val timeSlotRegex = Regex("""([MTWRFSU]+)\s+(\d{1,2}:\d{2}[ap]m)-(\d{1,2}:\d{2}[ap]m)""", RegexOption.IGNORE_CASE)
 
-    fun timeConflicts(times: List<String>, preferredStartMin: Int, preferredEndMin: Int): Boolean {
-        val intervals = times.flatMap(::parseTimeSlot)
-
-        // conflict if class outside preferred hours
-        if (intervals.any { it.start < preferredStartMin || it.end > preferredEndMin }) return true
-
-        // check overlapping classes on same day
-        return intervals.groupBy { it.day }.values.any { ivs ->
-            val sorted = ivs.sortedBy { it.start }
-            sorted.zipWithNext().any { (a, b) -> b.start < a.end }
+    fun parseTimeSlot(slot: String): Sequence<Interval> = sequence {
+        val matches = timeSlotRegex.findAll(slot)
+        for (m in matches) {
+            val groupValues = m.groupValues
+            val daysStr = groupValues[1]
+            val start = toMinutes(groupValues[2])
+            val end = toMinutes(groupValues[3])
+            for (dayChar in daysStr) {
+                val day = charToDay(dayChar) ?: continue
+                yield(Interval(day, start, end))
+            }
         }
     }
+
+    fun timeConflicts(times: Sequence<String>, preferredStartMin: Int, preferredEndMin: Int): Boolean {
+        val intervalsByDay = mutableMapOf<Day, MutableList<Interval>>()
+
+        for (slot in times) {
+            for (iv in parseTimeSlot(slot)) {
+                // Conflict with preferred hours
+                if (iv.start < preferredStartMin || iv.end > preferredEndMin) return true
+
+                intervalsByDay.computeIfAbsent(iv.day) { mutableListOf() }.add(iv)
+            }
+        }
+
+        // Check overlaps per day
+        for ((_, ivs) in intervalsByDay) {
+            // Small list per day; memory tiny
+            ivs.sortBy { it.start }
+            for (i in 0 until ivs.size - 1) {
+                if (ivs[i + 1].start < ivs[i].end) return true
+            }
+        }
+
+        return false
+    }
+
+
+
 
     fun freeTimeForSchedule(courses: List<Course>): Int {
         val map = mutableMapOf<Day, MutableList<Pair<Int, Int>>>()
