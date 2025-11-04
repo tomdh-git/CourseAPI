@@ -11,8 +11,10 @@ import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.TimeoutCancellationException
 import org.springframework.graphql.data.method.annotation.*
 import org.springframework.stereotype.Controller
+import org.springframework.web.bind.annotation.CrossOrigin
 
 @Controller
+@CrossOrigin(origins = ["*"]) // allow all origins
 class CourseResolver(private val cs: CourseService, private val ss: ScheduleService) {
     @QueryMapping
     suspend fun getCourseByInfo(@Argument subject: List<String>?, @Argument courseNum: String?, @Argument campus: List<String>, @Argument attributes: List<String>?, @Argument delivery: List<String>?, @Argument term: String, @Argument openWaitlist: String?, @Argument crn: Int?, @Argument partOfTerm: List<String>?, @Argument level: String?, @Argument courseTitle: String?, @Argument daysFilter: List<String>?, @Argument creditHours: Int?, @Argument startEndTime: List<String>?): CourseResult {
