@@ -12,6 +12,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import org.springframework.graphql.data.method.annotation.*
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.CrossOrigin
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException
 
 @Controller
 @CrossOrigin(origins = ["*"]) // allow all origins
@@ -45,6 +46,7 @@ private suspend fun <T, R> safeExecute(action: suspend () -> T, wrap: (T) -> R, 
     catch (e: IllegalArgumentException) { logger.error("Illegal Argument Exception in ${e.stackTrace[1].methodName}: ${e.message} at ${e.stackTraceToString()}"); (makeError("ILLEGAL ARGUMENT EXCEPTION", e.message)) }
     catch (e: TimeoutCancellationException) { logger.error("Timeout Cancellation Exception in ${e.stackTrace[1].methodName}: ${e.message} at ${e.stackTraceToString()}"); (makeError("TIMEOUT EXCEPTION", e.message)) }
     catch (e: NullPointerException) { logger.error("Null Pointer Exception in ${e.stackTrace[1].methodName}: ${e.message} at ${e.stackTraceToString()}"); (makeError("NULL POINTER EXCEPTION", e.message)) }
+    catch (e: ServerBusyException) { logger.error("Server Busy Exception in ${e.stackTrace[1].methodName}: ${e.message} at ${e.stackTraceToString()}"); (makeError("SERVER BUSY EXCEPTION", e.message)) }
     catch (e: Exception) { when (e) { is IOException, is ClientRequestException, is ServerResponseException -> { logger.error("Network Exception in ${e.stackTrace[1].methodName}: ${e.message} at ${e.stackTraceToString()}"); (makeError("NETWORK EXCEPTION", e.message)) }
             else -> { logger.error("Unexpected Exception in ${e.stackTrace[1].methodName}: ${e.message} at ${e.stackTraceToString()}"); (makeError("UNKNOWN EXCEPTION", e.message) ) } } }
 }
