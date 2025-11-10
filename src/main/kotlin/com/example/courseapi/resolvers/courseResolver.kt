@@ -12,7 +12,6 @@ import kotlinx.coroutines.TimeoutCancellationException
 import org.springframework.graphql.data.method.annotation.*
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.CrossOrigin
-import org.springframework.web.context.request.async.AsyncRequestTimeoutException
 
 @Controller
 @CrossOrigin(origins = ["*"]) // allow all origins
