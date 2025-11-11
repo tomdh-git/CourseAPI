@@ -4,9 +4,7 @@ import com.example.courseapi.exceptions.*
 import org.slf4j.*
 import io.ktor.client.plugins.*
 import com.example.courseapi.models.course.*
-import com.example.courseapi.models.misc.ErrorTerm
-import com.example.courseapi.models.misc.SuccessTerm
-import com.example.courseapi.models.misc.TermResult
+import com.example.courseapi.models.misc.*
 import com.example.courseapi.models.schedule.*
 import com.example.courseapi.services.course.CourseService
 import com.example.courseapi.services.schedule.ScheduleService
@@ -40,9 +38,14 @@ class CourseResolver(private val cs: CourseService, private val ss: ScheduleServ
     }
 
     @QueryMapping
-    suspend fun getTerms(): TermResult {
-        return safeExecute({ cs.getTerms() }, { SuccessTerm(it) }, { code, msg -> ErrorTerm(code, msg) })
+    suspend fun getTerms(): FieldResult {
+        return safeExecute({ cs.getTerms() }, { SuccessField(it) }, { code, msg -> ErrorField(code, msg) })
     }
+
+//    @QueryMapping
+//    suspend fun getCampuses(): FieldResult {
+//        return safeExecute({ cs.getTerms() }, { SuccessField(it) }, { code, msg -> ErrorField(code, msg) })
+//    }
 }
 
 private suspend fun <T, R> safeExecute(action: suspend () -> T, wrap: (T) -> R, makeError: (String, String?) -> R): R {

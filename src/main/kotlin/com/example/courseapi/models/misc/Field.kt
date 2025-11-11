@@ -1,5 +1,5 @@
 package com.example.courseapi.models.misc
 
-data class Term(
+data class Field(
     val name: String
 )

@@ -2,7 +2,7 @@ package com.example.courseapi.repos.course
 
 import com.example.courseapi.exceptions.*
 import com.example.courseapi.models.course.Course
-import com.example.courseapi.models.misc.Term
+import com.example.courseapi.models.misc.Field
 import io.ktor.http.encodeURLParameter
 import org.springframework.stereotype.Repository
 import com.example.courseapi.services.course.ParseService
@@ -57,7 +57,7 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
         return parse.parseCourses(resp.body)
     }
 
-    suspend fun getTerms(): List<Term>{
+    suspend fun getTerms(): List<Field>{
         val termsRaw = requests.getTokenResponse() //its the same page anyways
         if (termsRaw.isEmpty()) throw APIException("Empty terms")
         return parse.parseTerms(termsRaw)
