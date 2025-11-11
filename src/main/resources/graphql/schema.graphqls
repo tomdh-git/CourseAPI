@@ -16,7 +16,7 @@ type Schedule {
     freeTime: Int
 }
 
-type Term {
+type Field {
     name: String
 }
 
@@ -28,8 +28,8 @@ type SuccessSchedule {
     schedules: [Schedule]
 }
 
-type SuccessTerm {
-    terms: [Term]
+type SuccessField {
+    fields: [Field]
 }
 
 type ErrorCourse {
@@ -42,14 +42,14 @@ type ErrorSchedule {
     message: String
 }
 
-type ErrorTerm {
+type ErrorField {
     error: String
     message: String
 }
 
 union CourseResult = SuccessCourse | ErrorCourse
 union ScheduleResult = SuccessSchedule | ErrorSchedule
-union TermResult = SuccessTerm | ErrorTerm
+union FieldResult = SuccessField | ErrorField
 
 type Query {
     getCourseByInfo(
@@ -92,5 +92,5 @@ type Query {
         preferredEnd: String
     ): ScheduleResult
 
-    getTerms: TermResult
+    getTerms: FieldResult
 }
