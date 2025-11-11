@@ -18,7 +18,7 @@ class RequestService(private val client: HttpClient, private val limiter: Reques
 
     suspend fun getTokenResponse(): String = limiter.limit{
         val initialResponse: HttpResponse = client.get("https://www.apps.miamioh.edu/courselist/") { headers { append("Accept", "text/html"); append("Accept-Encoding", "gzip, deflate"); append("User-Agent", "Mozilla/5.0") } }
-        return@limit initialResponse.bodyAsText().substring(4500,7000)
+        return@limit initialResponse.bodyAsText()
     }
 
     suspend fun getOrFetchToken(): String {
@@ -43,5 +43,7 @@ class RequestService(private val client: HttpClient, private val limiter: Reques
         }
         return@limit HttpTextResponse(postResponse.status.value, resultHtml)
     }
+
+
 }
 

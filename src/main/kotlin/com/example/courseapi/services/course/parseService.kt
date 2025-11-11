@@ -1,6 +1,7 @@
 package com.example.courseapi.services.course
 
 import com.example.courseapi.models.course.Course
+import com.example.courseapi.models.misc.Term
 import org.jsoup.Jsoup
 import org.springframework.stereotype.Service
 
@@ -29,4 +30,14 @@ class ParseService{
         }
         return list
     }
+
+    fun parseTerms(html: String): List<Term> {
+        val doc = Jsoup.parse(html)
+        val options = doc.select("select#termFilter option[value]")
+        return options.mapNotNull { opt ->
+            val value = opt.attr("value").trim()
+            if (value.isNotEmpty()) Term(value) else null
+        }
+    }
+
 }

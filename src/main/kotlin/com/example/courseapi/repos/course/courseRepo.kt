@@ -2,6 +2,7 @@ package com.example.courseapi.repos.course
 
 import com.example.courseapi.exceptions.*
 import com.example.courseapi.models.course.Course
+import com.example.courseapi.models.misc.Term
 import io.ktor.http.encodeURLParameter
 import org.springframework.stereotype.Repository
 import com.example.courseapi.services.course.ParseService
@@ -12,7 +13,7 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
     suspend fun getCourseByInfo(subject: List<String>? = null, courseNum: String? = null, campus: List<String>, attributes: List<String>? = null, delivery: List<String>? = null, term: String, openWaitlist: String? = null, crn: Int? = null, partOfTerm: List<String>? = null, level: String? = null, courseTitle: String? = null, daysFilter: List<String>? = null, creditHours: Int? = null, startEndTime: List<String>? = null): List<Course> {
         // get or reuse token (saves one GET on warm requests)
         val token = requests.getOrFetchToken()
-        if (token.isEmpty()) throw TokenException("Empty Token")
+        if (token.isEmpty()) throw APIException("Empty Token")
 
         // build form
         val formParts = ArrayList<String>(24)
@@ -54,5 +55,11 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
         if (resp.body.contains("Your query returned too many results.", ignoreCase = true)) { throw QueryException("Query returned too many results.") }
         // parse
         return parse.parseCourses(resp.body)
+    }
+
+    suspend fun getTerms(): List<Term>{
+        val termsRaw = requests.getTokenResponse() //its the same page anyways
+        if (termsRaw.isEmpty()) throw APIException("Empty terms")
+        return parse.parseTerms(termsRaw)
     }
 }

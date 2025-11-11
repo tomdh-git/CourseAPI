@@ -10,29 +10,46 @@ type Course {
     requests: String
     delivery: String
 }
-type Schedule{
+
+type Schedule {
     courses: [Course]
     freeTime: Int
+}
+
+type Term {
+    name: String
 }
 
 type SuccessCourse {
     courses: [Course]
 }
-type SuccessSchedule{
+
+type SuccessSchedule {
     schedules: [Schedule]
+}
+
+type SuccessTerm {
+    terms: [Term]
 }
 
 type ErrorCourse {
     error: String
     message: String
 }
+
 type ErrorSchedule {
+    error: String
+    message: String
+}
+
+type ErrorTerm {
     error: String
     message: String
 }
 
 union CourseResult = SuccessCourse | ErrorCourse
 union ScheduleResult = SuccessSchedule | ErrorSchedule
+union TermResult = SuccessTerm | ErrorTerm
 
 type Query {
     getCourseByInfo(
@@ -51,10 +68,12 @@ type Query {
         creditHours: Int
         startEndTime: [String]
     ): CourseResult
+
     getCourseByCRN(
         crn: Int
         term: String
     ): CourseResult
+
     getScheduleByCourses(
         courses: [String]
         campus: [String]!
@@ -63,6 +82,7 @@ type Query {
         preferredStart: String
         preferredEnd: String
     ): ScheduleResult
+
     getFillerByAttributes(
         attributes: [String]
         courses: [String]
@@ -71,4 +91,6 @@ type Query {
         preferredStart: String
         preferredEnd: String
     ): ScheduleResult
+
+    getTerms: TermResult
 }

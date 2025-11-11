@@ -1,8 +1,10 @@
 package com.example.courseapi.services.course
 
+import com.example.courseapi.exceptions.APIException
 import com.example.courseapi.exceptions.QueryException
 import com.example.courseapi.models.course.Course
 import com.example.courseapi.models.input.*
+import com.example.courseapi.models.misc.Term
 import com.example.courseapi.repos.course.CourseRepo
 import org.springframework.stereotype.Service
 
@@ -23,5 +25,10 @@ class CourseService(private val repo: CourseRepo) {
 
     suspend fun getCourseByCRN(crn: Int? = 0, term: String = ""): List<Course> {
         return getCourseByInfo(crn = crn, term = term, campus = listOf("All"))
+    }
+
+    suspend fun getTerms(): List<Term>{
+        val res = repo.getTerms()
+        return res.ifEmpty{throw APIException("getTerms returning no terms") }
     }
 }

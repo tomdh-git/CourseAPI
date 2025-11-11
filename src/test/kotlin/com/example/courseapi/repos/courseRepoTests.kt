@@ -14,7 +14,7 @@ class CourseRepoTest {
 
     @Test fun `throws TokenException when token empty`() {
         whenever(runBlocking { requests.getOrFetchToken() }).thenReturn("")
-        assertThrows<TokenException> { runBlocking { repo.getCourseByInfo(campus = listOf("Main"), term = "202620") } }
+        assertThrows<APIException> { runBlocking { repo.getCourseByInfo(campus = listOf("Main"), term = "202620") } }
     }
 
     @Test fun `throws QueryException when too many results`() {

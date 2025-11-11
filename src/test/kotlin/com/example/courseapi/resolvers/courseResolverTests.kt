@@ -6,11 +6,9 @@ import com.example.courseapi.models.schedule.*
 import com.example.courseapi.services.course.CourseService
 import com.example.courseapi.services.schedule.ScheduleService
 import io.ktor.client.plugins.*
-import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.TimeoutCancellationException
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.*
@@ -85,7 +83,7 @@ class CourseResolverTests {
 
     @Test
     fun `handles TokenException`() = runBlocking {
-        whenever(cs.getCourseByCRN(any(), any())).thenThrow(TokenException("Token empty"))
+        whenever(cs.getCourseByCRN(any(), any())).thenThrow(APIException("Token empty"))
         val result = resolver.getCourseByCRN(1, "202620")
         assertTrue(result is ErrorCourse)
         assertEquals("TOKEN EXCEPTION", (result as ErrorCourse).error)

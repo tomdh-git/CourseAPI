@@ -4,6 +4,9 @@ import com.example.courseapi.exceptions.*
 import org.slf4j.*
 import io.ktor.client.plugins.*
 import com.example.courseapi.models.course.*
+import com.example.courseapi.models.misc.ErrorTerm
+import com.example.courseapi.models.misc.SuccessTerm
+import com.example.courseapi.models.misc.TermResult
 import com.example.courseapi.models.schedule.*
 import com.example.courseapi.services.course.CourseService
 import com.example.courseapi.services.schedule.ScheduleService
@@ -35,12 +38,17 @@ class CourseResolver(private val cs: CourseService, private val ss: ScheduleServ
     suspend fun getFillerByAttributes(@Argument attributes: List<String>, @Argument courses: List<String>, @Argument campus: List<String>, @Argument term: String, @Argument preferredStart: String?, @Argument preferredEnd: String?): ScheduleResult{
         return safeExecute ({ ss.getFillerByAttributes(attributes, courses, campus, term, preferredStart, preferredEnd) }, { SuccessSchedule(it) }, { code, msg -> ErrorSchedule(code, msg) })
     }
+
+    @QueryMapping
+    suspend fun getTerms(): TermResult {
+        return safeExecute({ cs.getTerms() }, { SuccessTerm(it) }, { code, msg -> ErrorTerm(code, msg) })
+    }
 }
 
 private suspend fun <T, R> safeExecute(action: suspend () -> T, wrap: (T) -> R, makeError: (String, String?) -> R): R {
     val logger: Logger = LoggerFactory.getLogger(CourseResolver::class.java)
     return try { wrap(action()) }
-    catch (e: TokenException) { logger.error("Token Exception in ${e.stackTrace[1].methodName}: Couldn't fetch token at ${e.stackTraceToString()}"); (makeError("TOKEN EXCEPTION", e.message)) }
+    catch (e: APIException) { logger.error("API Exception in ${e.stackTrace[1].methodName}: Theres a problem with the Miami Course List. Threw at ${e.stackTraceToString()}"); (makeError("API EXCEPTION", e.message)) }
     catch (e: QueryException) { logger.error("Query Exception in ${e.stackTrace[1].methodName}: Query returned too many results at ${e.stackTraceToString()}"); (makeError("QUERY EXCEPTION", e.message)) }
     catch (e: IllegalArgumentException) { logger.error("Illegal Argument Exception in ${e.stackTrace[1].methodName}: ${e.message} at ${e.stackTraceToString()}"); (makeError("ILLEGAL ARGUMENT EXCEPTION", e.message)) }
     catch (e: TimeoutCancellationException) { logger.error("Timeout Cancellation Exception in ${e.stackTrace[1].methodName}: ${e.message} at ${e.stackTraceToString()}"); (makeError("TIMEOUT EXCEPTION", e.message)) }
