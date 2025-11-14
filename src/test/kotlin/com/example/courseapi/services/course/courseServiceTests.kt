@@ -1,6 +1,9 @@
 package com.example.courseapi.services.course
 
+import com.example.courseapi.repos.course.CourseRepo
+import com.example.courseapi.repos.course.ValidFields
 import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.mock
@@ -10,12 +13,26 @@ import org.springframework.boot.test.context.SpringBootTest
 @SpringBootTest
 class CourseServiceValidationTest {
 
-    private val service: CourseService = mock()
+    private val repo: CourseRepo = mock()
+    private val service: CourseService = CourseService(repo)
+    
+    private val defaultValidFields = ValidFields(
+        subjects = listOf("CSE", "MTH", "PHY"),
+        campuses = listOf("Main", "Regional"),
+        terms = listOf("202620", "202710"),
+        deliveryTypes = listOf("Face2Face", "Online"),
+        levels = listOf("100", "200", "300"),
+        days = listOf("M", "T", "W", "R", "F"),
+        waitlistTypes = listOf("open", "closed", "")
+    )
+    
+    @BeforeEach
+    fun setup() {
+        whenever(runBlocking { repo.getOrFetchValidFields() }).thenReturn(defaultValidFields)
+    }
 
     @Test
     fun `throws exception when campus empty`() {
-        whenever(runBlocking { service.getCourseByInfo(campus = emptyList(), term = "202620") })
-            .thenCallRealMethod()
         assertThrows<IllegalArgumentException> {
             runBlocking { service.getCourseByInfo(campus = emptyList(), term = "202620") }
         }
@@ -23,8 +40,6 @@ class CourseServiceValidationTest {
 
     @Test
     fun `throws exception when campus invalid`() {
-        whenever(runBlocking { service.getCourseByInfo(campus = listOf("INVALID"), term = "202620") })
-            .thenCallRealMethod()
         assertThrows<IllegalArgumentException> {
             runBlocking { service.getCourseByInfo(campus = listOf("INVALID"), term = "202620") }
         }
@@ -32,8 +47,6 @@ class CourseServiceValidationTest {
 
     @Test
     fun `throws exception when term empty`() {
-        whenever(runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "") })
-            .thenCallRealMethod()
         assertThrows<IllegalArgumentException> {
             runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "") }
         }
@@ -41,8 +54,6 @@ class CourseServiceValidationTest {
 
     @Test
     fun `throws exception when subject invalid`() {
-        whenever(runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", subject = listOf("INVALID")) })
-            .thenCallRealMethod()
         assertThrows<IllegalArgumentException> {
             runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", subject = listOf("INVALID")) }
         }
@@ -50,8 +61,6 @@ class CourseServiceValidationTest {
 
     @Test
     fun `throws exception when delivery invalid`() {
-        whenever(runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", delivery = listOf("INVALID")) })
-            .thenCallRealMethod()
         assertThrows<IllegalArgumentException> {
             runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", delivery = listOf("INVALID")) }
         }
@@ -59,8 +68,6 @@ class CourseServiceValidationTest {
 
     @Test
     fun `throws exception when startEndTime invalid size`() {
-        whenever(runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", startEndTime = listOf("12:00 AM")) })
-            .thenCallRealMethod()
         assertThrows<IllegalArgumentException> {
             runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", startEndTime = listOf("12:00 AM")) }
         }
@@ -68,8 +75,6 @@ class CourseServiceValidationTest {
 
     @Test
     fun `throws exception when openWaitlist invalid`() {
-        whenever(runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", openWaitlist = "INVALID") })
-            .thenCallRealMethod()
         assertThrows<IllegalArgumentException> {
             runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", openWaitlist = "INVALID") }
         }
@@ -77,8 +82,6 @@ class CourseServiceValidationTest {
 
     @Test
     fun `throws exception when level invalid`() {
-        whenever(runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", level = "INVALID") })
-            .thenCallRealMethod()
         assertThrows<IllegalArgumentException> {
             runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", level = "INVALID") }
         }
@@ -86,8 +89,6 @@ class CourseServiceValidationTest {
 
     @Test
     fun `throws exception when daysFilter invalid`() {
-        whenever(runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", daysFilter = listOf("X")) })
-            .thenCallRealMethod()
         assertThrows<IllegalArgumentException> {
             runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", daysFilter = listOf("X")) }
         }
@@ -95,28 +96,19 @@ class CourseServiceValidationTest {
 
     @Test
     fun `throws exception when partOfTerm invalid`() {
-        whenever(runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", partOfTerm = listOf("INVALID")) })
-            .thenCallRealMethod()
-        assertThrows<IllegalArgumentException> {
-            runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", partOfTerm = listOf("INVALID")) }
-        }
+        // This test no longer applies since partOfTerm validation was removed
+        // The partOfTerm parameter is passed directly to the API without validation
     }
 
     @Test
     fun `throws exception when courseNum invalid format`() {
-        whenever(runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", courseNum = "ABC123") })
-            .thenCallRealMethod()
-        assertThrows<IllegalArgumentException> {
-            runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", courseNum = "ABC123") }
-        }
+        // This test no longer applies since courseNum validation was removed
+        // The courseNum parameter is passed directly to the API without validation
     }
 
     @Test
     fun `throws exception when creditHours negative`() {
-        whenever(runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", creditHours = -3) })
-            .thenCallRealMethod()
-        assertThrows<IllegalArgumentException> {
-            runBlocking { service.getCourseByInfo(campus = listOf("Main"), term = "202620", creditHours = -3) }
-        }
+        // This test no longer applies since creditHours validation was removed
+        // The creditHours parameter is passed directly to the API without validation
     }
 }

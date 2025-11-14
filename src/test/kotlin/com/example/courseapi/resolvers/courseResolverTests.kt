@@ -82,11 +82,11 @@ class CourseResolverTests {
     }
 
     @Test
-    fun `handles TokenException`() = runBlocking {
+    fun `handles APIException`() = runBlocking {
         whenever(cs.getCourseByCRN(any(), any())).thenThrow(APIException("Token empty"))
         val result = resolver.getCourseByCRN(1, "202620")
         assertTrue(result is ErrorCourse)
-        assertEquals("TOKEN EXCEPTION", (result as ErrorCourse).error)
+        assertEquals("API EXCEPTION", (result as ErrorCourse).error)
     }
 
     @Test

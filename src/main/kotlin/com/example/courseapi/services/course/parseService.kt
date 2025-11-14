@@ -40,4 +40,64 @@ class ParseService{
         }
     }
 
+    fun parseDelivery(html: String): List<Field> {
+        val doc = Jsoup.parse(html)
+        val inputs = doc.select("input.deliveryTypeCheckBox[value]")
+
+        return inputs.mapNotNull { input ->
+            val value = input.attr("value").trim()
+            if (value.isNotEmpty()) Field(value) else null
+        }
+    }
+
+    fun parseCampuses(html: String): List<Field> {
+        val doc = Jsoup.parse(html)
+        val options = doc.select("select#campusFilter option[value]")
+
+        return options.mapNotNull { opt ->
+            val value = opt.attr("value").trim()
+            if (value.isNotEmpty()) Field(value) else null
+        }
+    }
+
+    fun parseSubjects(html: String): List<Field> {
+        val doc = Jsoup.parse(html)
+        val options = doc.select("select#subject option[value]")
+
+        return options.mapNotNull { opt ->
+            val value = opt.attr("value").trim()
+            if (value.isNotEmpty()) Field(value) else null
+        }
+    }
+
+    fun parseWaitlist(html: String): List<Field> {
+        val doc = Jsoup.parse(html)
+        val options = doc.select("select#openWaitlist option[value]")
+
+        return options.mapNotNull { opt ->
+            val value = opt.attr("value").trim()
+            Field(value) // empty string "" is allowed here because it's valid in the HTML
+        }
+    }
+
+    fun parseLevels(html: String): List<Field> {
+        val doc = Jsoup.parse(html)
+        val options = doc.select("select#levelFilter option[value]")
+
+        return options.map { opt ->
+            Field(opt.attr("value").trim())
+        }
+    }
+
+    fun parseDays(html: String): List<Field> {
+        val doc = Jsoup.parse(html)
+        val options = doc.select("select#daysFilter option[value]")
+
+        return options.map { opt ->
+            Field(opt.attr("value").trim())
+        }
+    }
+
+
+
 }
