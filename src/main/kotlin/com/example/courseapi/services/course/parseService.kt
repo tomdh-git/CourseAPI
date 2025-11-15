@@ -7,93 +7,122 @@ import org.springframework.stereotype.Service
 
 @Service
 class ParseService{
+    // Pre-compiled digit regex to avoid repeated compilation
+    private val digitRegex = Regex("\\d+")
+    
     fun parseCourses(html: String): List<Course> {
         val doc = Jsoup.parse(html)
         val rows = doc.select("tr.resultrow")
-        val list = mutableListOf<Course>()
+        val list = ArrayList<Course>(rows.size) // pre-allocate with expected size
         for (tr in rows) {
             val tds = tr.select("td")
             if (tds.size < 9) continue
+            // Avoid creating intermediate strings - trim in-place where possible
             val subject = tds[0].ownText().trim()
+            if (subject.isEmpty()) continue // fail fast
             val courseNum = tds[1].text().trim()
             val title = tds[2].text().trim()
             val section = tds[3].text().trim()
-            val crn = tds[4].text().trim().filter { it.isDigit() }.toIntOrNull() ?: 0
+            // More efficient digit extraction using regex find instead of filter
+            val crn = digitRegex.find(tds[4].text())?.value?.toIntOrNull() ?: 0
             val campus = tds[5].text().trim()
-            val credits = tds[6].text().trim().toIntOrNull() ?: 0
+            val credits = digitRegex.find(tds[6].text())?.value?.toIntOrNull() ?: 0
             val capacity = tds[7].text().trim()
             val requests = tds[8].text().trim()
             val delivery = tds.getOrNull(9)?.text()?.trim() ?: ""
-            if (subject.isEmpty() && courseNum == "" && title.isEmpty()) continue
-            list.add(Course(subject, courseNum, title, section, crn, campus, credits, capacity, requests, delivery)
-            )
+            list.add(Course(subject, courseNum, title, section, crn, campus, credits, capacity, requests, delivery))
         }
         return list
     }
 
+    // Batch parse to avoid re-parsing HTML 7 times
+    fun parseAllFields(html: String): Map<String, List<Field>> {
+        val doc = Jsoup.parse(html) // parse once, reuse for all selectors
+        val result = mutableMapOf<String, List<Field>>()
+        
+        // Terms
+        result["terms"] = doc.select("select#termFilter option[value]").map { opt ->
+            Field(opt.attr("value").trim())
+        }
+        
+        // Delivery types
+        result["delivery"] = doc.select("input.deliveryTypeCheckBox[value]").map { input ->
+            Field(input.attr("value").trim())
+        }.filter { it.name.isNotEmpty() }
+        
+        // Campuses
+        result["campuses"] = doc.select("select#campusFilter option[value]").map { opt ->
+            Field(opt.attr("value").trim())
+        }.filter { it.name.isNotEmpty() }
+        
+        // Subjects
+        result["subjects"] = doc.select("select#subject option[value]").map { opt ->
+            Field(opt.attr("value").trim())
+        }.filter { it.name.isNotEmpty() }
+        
+        // Waitlist types
+        result["waitlist"] = doc.select("select#openWaitlist option[value]").map { opt ->
+            Field(opt.attr("value").trim())
+        }
+        
+        // Levels
+        result["levels"] = doc.select("select#levelFilter option[value]").map { opt ->
+            Field(opt.attr("value").trim())
+        }
+        
+        // Days
+        result["days"] = doc.select("select#daysFilter option[value]").map { opt ->
+            Field(opt.attr("value").trim())
+        }
+        
+        return result
+    }
+    
     fun parseTerms(html: String): List<Field> {
         val doc = Jsoup.parse(html)
-        val options = doc.select("select#termFilter option[value]")
-        return options.mapNotNull { opt ->
-            val value = opt.attr("value").trim()
-            if (value.isNotEmpty()) Field(value) else null
+        return doc.select("select#termFilter option[value]").map { opt ->
+            Field(opt.attr("value").trim())
         }
     }
 
     fun parseDelivery(html: String): List<Field> {
         val doc = Jsoup.parse(html)
-        val inputs = doc.select("input.deliveryTypeCheckBox[value]")
-
-        return inputs.mapNotNull { input ->
-            val value = input.attr("value").trim()
-            if (value.isNotEmpty()) Field(value) else null
-        }
+        return doc.select("input.deliveryTypeCheckBox[value]").map { input ->
+            Field(input.attr("value").trim())
+        }.filter { it.name.isNotEmpty() }
     }
 
     fun parseCampuses(html: String): List<Field> {
         val doc = Jsoup.parse(html)
-        val options = doc.select("select#campusFilter option[value]")
-
-        return options.mapNotNull { opt ->
-            val value = opt.attr("value").trim()
-            if (value.isNotEmpty()) Field(value) else null
-        }
+        return doc.select("select#campusFilter option[value]").map { opt ->
+            Field(opt.attr("value").trim())
+        }.filter { it.name.isNotEmpty() }
     }
 
     fun parseSubjects(html: String): List<Field> {
         val doc = Jsoup.parse(html)
-        val options = doc.select("select#subject option[value]")
-
-        return options.mapNotNull { opt ->
-            val value = opt.attr("value").trim()
-            if (value.isNotEmpty()) Field(value) else null
-        }
+        return doc.select("select#subject option[value]").map { opt ->
+            Field(opt.attr("value").trim())
+        }.filter { it.name.isNotEmpty() }
     }
 
     fun parseWaitlist(html: String): List<Field> {
         val doc = Jsoup.parse(html)
-        val options = doc.select("select#openWaitlist option[value]")
-
-        return options.mapNotNull { opt ->
-            val value = opt.attr("value").trim()
-            Field(value) // empty string "" is allowed here because it's valid in the HTML
+        return doc.select("select#openWaitlist option[value]").map { opt ->
+            Field(opt.attr("value").trim())
         }
     }
 
     fun parseLevels(html: String): List<Field> {
         val doc = Jsoup.parse(html)
-        val options = doc.select("select#levelFilter option[value]")
-
-        return options.map { opt ->
+        return doc.select("select#levelFilter option[value]").map { opt ->
             Field(opt.attr("value").trim())
         }
     }
 
     fun parseDays(html: String): List<Field> {
         val doc = Jsoup.parse(html)
-        val options = doc.select("select#daysFilter option[value]")
-
-        return options.map { opt ->
+        return doc.select("select#daysFilter option[value]").map { opt ->
             Field(opt.attr("value").trim())
         }
     }

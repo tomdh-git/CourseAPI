@@ -17,13 +17,13 @@ class CourseServiceValidationTest {
     private val service: CourseService = CourseService(repo)
     
     private val defaultValidFields = ValidFields(
-        subjects = listOf("CSE", "MTH", "PHY"),
-        campuses = listOf("Main", "Regional"),
-        terms = listOf("202620", "202710"),
-        deliveryTypes = listOf("Face2Face", "Online"),
-        levels = listOf("100", "200", "300"),
-        days = listOf("M", "T", "W", "R", "F"),
-        waitlistTypes = listOf("open", "closed", "")
+        subjects = setOf("CSE", "MTH", "PHY"),
+        campuses = setOf("Main", "Regional"),
+        terms = setOf("202620", "202710"),
+        deliveryTypes = setOf("Face2Face", "Online"),
+        levels = setOf("100", "200", "300"),
+        days = setOf("M", "T", "W", "R", "F"),
+        waitlistTypes = setOf("open", "closed", "")
     )
     
     @BeforeEach

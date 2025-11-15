@@ -11,13 +11,13 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 data class ValidFields(
-    val subjects: List<String>,
-    val campuses: List<String>,
-    val terms: List<String>,
-    val deliveryTypes: List<String>,
-    val levels: List<String>,
-    val days: List<String>,
-    val waitlistTypes: List<String>
+    val subjects: Set<String>,
+    val campuses: Set<String>,
+    val terms: Set<String>,
+    val deliveryTypes: Set<String>,
+    val levels: Set<String>,
+    val days: Set<String>,
+    val waitlistTypes: Set<String>
 )
 
 @Repository
@@ -90,13 +90,15 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
         val html = requests.getTokenResponse()
         if (html.isEmpty()) throw APIException("Empty response when fetching valid fields")
 
-        val subjects = parse.parseSubjects(html).map { it.name }
-        val campuses = parse.parseCampuses(html).map { it.name }
-        val terms = parse.parseTerms(html).map { it.name }
-        val deliveryTypes = parse.parseDelivery(html).map { it.name }
-        val levels = parse.parseLevels(html).map { it.name }
-        val days = parse.parseDays(html).map { it.name }
-        val waitlistTypes = parse.parseWaitlist(html).map { it.name }
+        // Batch parse all fields in one pass (single HTML parse) - much more efficient
+        val allFields = parse.parseAllFields(html)
+        val subjects = allFields["subjects"]?.map { it.name }?.toSet() ?: emptySet()
+        val campuses = allFields["campuses"]?.map { it.name }?.toSet() ?: emptySet()
+        val terms = allFields["terms"]?.map { it.name }?.toSet() ?: emptySet()
+        val deliveryTypes = allFields["delivery"]?.map { it.name }?.toSet() ?: emptySet()
+        val levels = allFields["levels"]?.map { it.name }?.toSet() ?: emptySet()
+        val days = allFields["days"]?.map { it.name }?.toSet() ?: emptySet()
+        val waitlistTypes = allFields["waitlist"]?.map { it.name }?.toSet() ?: emptySet()
 
         val fields = ValidFields(
             subjects = subjects,
