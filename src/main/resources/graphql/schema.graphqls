@@ -76,7 +76,7 @@ type Query {
 
     getScheduleByCourses(
         courses: [String]
-        campus: [String]!
+        campus: [String]
         term: String
         optimizeFreeTime: Boolean
         preferredStart: String
