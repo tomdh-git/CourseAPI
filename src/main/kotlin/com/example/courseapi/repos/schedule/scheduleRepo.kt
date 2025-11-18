@@ -50,8 +50,10 @@ class ScheduleRepo(private val course: CourseRepo){
         val attributesList = course.getCourseByInfo(campus = campus, term = term, attributes = attributes)
         val schedules = getScheduleByCourses(courses, campus, term, true, preferredStart, preferredEnd)
         val result = mutableListOf<Schedule>()
+        val startMin = toMinutes(preferredStart ?: "12:00am")
+        val endMin = toMinutes(preferredEnd ?: "11:59pm")
         for (s in schedules) {
-            val freeSlots = getFreeSlots(s)
+            val freeSlots = getFreeSlots(s,startMin,endMin)
             val fillers = attributesList.filter { filler ->
                 val slot = parseTimeSlot(filler.delivery)
                 slot.all { iv -> freeSlots[iv.day]?.any { (fs, fe) -> iv.start >= fs && iv.end <= fe } == true }
@@ -165,31 +167,33 @@ class ScheduleRepo(private val course: CourseRepo){
         return total
     }
 
-    fun getFreeSlots(schedule: Schedule): Map<Day, List<Pair<Int, Int>>> {
+    fun getFreeSlots(schedule: Schedule, startMin: Int, endMin: Int): Map<Day, List<Pair<Int, Int>>> {
         val occupied = arrayOfNulls<MutableList<Pair<Int, Int>>?>(7)
         for (c in schedule.courses) {
             for (iv in parseTimeSlot(c.delivery)) {
                 val dayIndex = iv.day.ordinal
                 if (occupied[dayIndex] == null) occupied[dayIndex] = mutableListOf()
-                occupied[dayIndex]!!.add(iv.start to iv.end)
+                // clamp events to the preferred window
+                val s = maxOf(iv.start, startMin)
+                val e = minOf(iv.end, endMin)
+                if (s < e) occupied[dayIndex]!!.add(s to e)
             }
         }
-
         val free = mutableMapOf<Day, List<Pair<Int, Int>>>()
         for (dayIndex in 0 until 7) {
             val blocks = occupied[dayIndex]
             if (blocks != null && blocks.isNotEmpty()) {
                 blocks.sortBy { it.first }
-                var prevEnd = 0
+                var prevEnd = startMin
                 val dailyFree = mutableListOf<Pair<Int, Int>>()
-                for ((start, end) in blocks) {
-                    if (start > prevEnd) dailyFree.add(prevEnd to start)
-                    prevEnd = end
+                for ((s, e) in blocks) {
+                    if (s > prevEnd) dailyFree.add(prevEnd to s)
+                    prevEnd = maxOf(prevEnd, e)
                 }
-                if (prevEnd < 1440) dailyFree.add(prevEnd to 1440)
+                if (prevEnd < endMin) dailyFree.add(prevEnd to endMin)
                 free[Day.entries[dayIndex]] = dailyFree
             } else {
-                free[Day.entries[dayIndex]] = listOf(0 to 1440)
+                free[Day.entries[dayIndex]] = listOf(startMin to endMin)
             }
         }
         return free
