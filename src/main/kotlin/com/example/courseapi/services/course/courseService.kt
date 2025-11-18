@@ -15,7 +15,8 @@ class CourseService(private val repo: CourseRepo) {
 
         if (campus.isEmpty() || !campus.all { it in fields.campuses }) throw IllegalArgumentException("Campuses empty or invalid")
         if (term.isEmpty() || term !in fields.terms) throw IllegalArgumentException("Term is empty or invalid")
-        if (!(subject.isNullOrEmpty() || subject.all { it in fields.subjects })) throw IllegalArgumentException("Invalid subjects field")if (!courseNum.isNullOrEmpty()) {
+        if (!(subject.isNullOrEmpty() || subject.all { it in fields.subjects })) throw IllegalArgumentException("Invalid subjects field")
+        if (!courseNum.isNullOrEmpty()) {
             if (subject.isNullOrEmpty()) { throw IllegalArgumentException("Course num is specified without a subject") }
             if (subject.size > 1) { throw IllegalArgumentException("Course num inputted with too many subjects") }
         }
