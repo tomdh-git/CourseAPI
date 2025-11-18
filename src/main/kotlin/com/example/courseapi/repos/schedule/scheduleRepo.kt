@@ -46,21 +46,49 @@ class ScheduleRepo(private val course: CourseRepo){
         if (optimizeFreeTime == true) schedules.sortedByDescending { it.freeTime } else schedules
     }
 
-    suspend fun getFillerByAttributes(attributes: List<String>, courses: List<String>, campus: List<String>, term: String, preferredStart: String? = null, preferredEnd: String? = null): List<Schedule>{
+    suspend fun getFillerByAttributes(attributes: List<String>, courses: List<String>, campus: List<String>, term: String, preferredStart: String? = null, preferredEnd: String? = null, ignoreWeb: Boolean? = false): List<Schedule> {
         val attributesList = course.getCourseByInfo(campus = campus, term = term, attributes = attributes)
         val schedules = getScheduleByCourses(courses, campus, term, true, preferredStart, preferredEnd)
-        val result = mutableListOf<Schedule>()
         val startMin = toMinutes(preferredStart ?: "12:00am")
         val endMin = toMinutes(preferredEnd ?: "11:59pm")
-        for (s in schedules) {
-            val freeSlots = getFreeSlots(s,startMin,endMin)
-            val fillers = attributesList.filter { filler ->
-                val slot = parseTimeSlot(filler.delivery)
-                slot.all { iv -> freeSlots[iv.day]?.any { (fs, fe) -> iv.start >= fs && iv.end <= fe } == true }
+        return schedules.map { s ->
+            if (ignoreWeb != true) {
+                // Include up to 10 web courses, ignoring timing (web courses don't take up time slots)
+                val webCourses = attributesList
+                    .filter { it.delivery.contains("WEB", ignoreCase = true) }
+                    .filter { c ->
+                        parseTimeSlot(c.delivery).any { iv -> iv.start < endMin && iv.end > startMin }
+                    }
+                    .take(10)
+                s.copy(courses = s.courses + webCourses)
+
+            } else {
+                val nonWebCourses = attributesList.filter { !it.delivery.contains("WEB", ignoreCase = true) }
+                val existingIntervalsByDay = mutableMapOf<Day, MutableList<Interval>>()
+                for (c in s.courses) { for (iv in parseTimeSlot(c.delivery)) { existingIntervalsByDay.computeIfAbsent(iv.day) { mutableListOf() }.add(iv) } }
+                val compatible = nonWebCourses.filter { filler ->
+                    val ivs = parseTimeSlot(filler.delivery).toList()
+                    if (ivs.isEmpty()) { return@filter false }
+                    val fitsAll = ivs.all { iv ->
+                        val inWindow = iv.start >= startMin && iv.end <= endMin
+                        if (!inWindow) { return@all false }
+                        val existingOnDay = existingIntervalsByDay[iv.day] ?: emptyList()
+                        val conflict = existingOnDay.any { e -> iv.start < e.end && iv.end > e.start }
+                        if (conflict) { return@all false }
+                        true
+                    }
+                    fitsAll
+                }
+                if (compatible.isEmpty()) return@map s
+                val best = compatible.maxByOrNull { filler ->
+                    val newCourses = s.courses + filler
+                    val newSchedule = Schedule(newCourses, freeTimeForSchedule(newCourses))
+                    val newFree = getFreeSlots(newSchedule, startMin, endMin)
+                    newFree.values.sumOf { slots -> slots.sumOf { it.second - it.first } }
+                }!!
+                s.copy(courses = s.courses + best)
             }
-            if (fillers.isNotEmpty()) { result.add(s.copy(courses = s.courses + fillers.first())) }
         }
-        return result
     }
 
     fun toMinutes(t: String): Int {
@@ -168,38 +196,59 @@ class ScheduleRepo(private val course: CourseRepo){
     }
 
     fun getFreeSlots(schedule: Schedule, startMin: Int, endMin: Int): Map<Day, List<Pair<Int, Int>>> {
-        val occupied = arrayOfNulls<MutableList<Pair<Int, Int>>?>(7)
+        val dayBusy = mutableMapOf<Day, MutableList<Pair<Int, Int>>>()
+
         for (c in schedule.courses) {
             for (iv in parseTimeSlot(c.delivery)) {
-                val dayIndex = iv.day.ordinal
-                if (occupied[dayIndex] == null) occupied[dayIndex] = mutableListOf()
-                // clamp events to the preferred window
-                val s = maxOf(iv.start, startMin)
-                val e = minOf(iv.end, endMin)
-                if (s < e) occupied[dayIndex]!!.add(s to e)
+                dayBusy.computeIfAbsent(iv.day) { mutableListOf() }.add(iv.start to iv.end)
             }
         }
+
         val free = mutableMapOf<Day, List<Pair<Int, Int>>>()
-        for (dayIndex in 0 until 7) {
-            val blocks = occupied[dayIndex]
-            if (blocks != null && blocks.isNotEmpty()) {
-                blocks.sortBy { it.first }
-                var prevEnd = startMin
-                val dailyFree = mutableListOf<Pair<Int, Int>>()
-                for ((s, e) in blocks) {
-                    if (s > prevEnd) dailyFree.add(prevEnd to s)
-                    prevEnd = maxOf(prevEnd, e)
+
+        for (day in Day.entries) {
+            val busy = dayBusy[day]?.sortedBy { it.first } ?: emptyList()
+            val dailyFree = mutableListOf<Pair<Int, Int>>()
+
+            var cur = startMin
+
+            for ((bs, be) in busy) {
+                // If class starts before preferred end but ends after preferred end,
+                // then free time before it is invalid because the class extends beyond our window
+                // Example: preferred end is 4:30pm, class is 4:25pm-5:20pm
+                // Free time before 4:25pm is not valid because the class extends beyond 4:30pm
+                if (bs < endMin && be > endMin) {
+                    // Class extends beyond preferred end, invalidates free time before it
+                    // Don't add any free slots before this class
+                    cur = endMin
+                    break
                 }
-                if (prevEnd < endMin) dailyFree.add(prevEnd to endMin)
-                free[Day.entries[dayIndex]] = dailyFree
-            } else {
-                free[Day.entries[dayIndex]] = listOf(startMin to endMin)
+                
+                // Skip blocks that are completely outside the preferred window
+                if (be <= startMin || bs >= endMin) continue
+
+                // Class is within or overlaps preferred window
+                val bsClipped = maxOf(bs, startMin)
+                if (bsClipped > cur) {
+                    val freeEnd = minOf(bsClipped, endMin)
+                    if (freeEnd > cur) {
+                        dailyFree.add(cur to freeEnd)
+                    }
+                }
+
+                // advance cur to the end of this busy block (but clip to endMin)
+                cur = maxOf(cur, minOf(be, endMin))
+                if (cur >= endMin) break
             }
+
+            // Add remaining free time at the end of the day (if any)
+            if (cur < endMin) dailyFree.add(cur to endMin)
+            free[day] = dailyFree
         }
+
         return free
     }
 
-    // Optimized Cartesian product - avoids creating intermediate lists with '+' operator
     fun <T> cartesianProduct(lists: List<List<T>>): List<List<T>> {
         if (lists.isEmpty() || lists.any { it.isEmpty() }) return emptyList()
         // Calculate total result size upfront to pre-allocate

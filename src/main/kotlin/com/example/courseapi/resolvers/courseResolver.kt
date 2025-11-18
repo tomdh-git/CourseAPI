@@ -33,8 +33,8 @@ class CourseResolver(private val cs: CourseService, private val ss: ScheduleServ
     }
 
     @QueryMapping
-    suspend fun getFillerByAttributes(@Argument attributes: List<String>, @Argument courses: List<String>, @Argument campus: List<String>, @Argument term: String, @Argument preferredStart: String?, @Argument preferredEnd: String?): ScheduleResult{
-        return safeExecute ({ ss.getFillerByAttributes(attributes, courses, campus, term, preferredStart, preferredEnd) }, { SuccessSchedule(it) }, { code, msg -> ErrorSchedule(code, msg) })
+    suspend fun getFillerByAttributes(@Argument attributes: List<String>, @Argument courses: List<String>, @Argument campus: List<String>, @Argument term: String, @Argument preferredStart: String?, @Argument preferredEnd: String?, @Argument ignoreWeb: Boolean?): ScheduleResult{
+        return safeExecute ({ ss.getFillerByAttributes(attributes, courses, campus, term, preferredStart, preferredEnd, ignoreWeb) }, { SuccessSchedule(it) }, { code, msg -> ErrorSchedule(code, msg) })
     }
 
     @QueryMapping

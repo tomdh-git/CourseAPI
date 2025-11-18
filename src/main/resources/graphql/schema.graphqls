@@ -90,6 +90,7 @@ type Query {
         term: String
         preferredStart: String
         preferredEnd: String
+        ignoreWeb: Boolean
     ): ScheduleResult
 
     getTerms: FieldResult
