@@ -4,7 +4,9 @@
 Miami CourseAPI is a SpringBoot GraphQL API built with Gradle. It exposes a GraphQL schema for querying courses and schedules through the `/graphql` endpoint. It accesses the Miami Course List  (https://www.apps.miamioh.edu/courselist) for finding courses and valid fields. 
 ## Host
 CourseAPI is currently being hosted at `https://courseapi-production-3751.up.railway.app`
+
 The graphql endpoint is `https://courseapi-production-3751.up.railway.app/graphql` (POST)
+
 The alive endpoint is `https://courseapi-production-3751.up.railway.app/alive` (GET)
 
 ## Requirements
