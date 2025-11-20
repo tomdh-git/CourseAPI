@@ -20,7 +20,8 @@ class CourseService(private val repo: CourseRepo) {
             if (subject.isNullOrEmpty()) { throw IllegalArgumentException("Course num is specified without a subject") }
             if (subject.size > 1) { throw IllegalArgumentException("Course num inputted with too many subjects") }
         }
-        if (!delivery.isNullOrEmpty() && !delivery.all { it in fields.deliveryTypes }) throw IllegalArgumentException("Delivery types empty or invalid")
+        if (!attributes.isNullOrEmpty() && !attributes.all { it in fields.attributes })  throw IllegalArgumentException("Attributes field invalid")
+        if (!delivery.isNullOrEmpty() && !delivery.all { it in fields.deliveryTypes }) throw IllegalArgumentException("Delivery types invalid")
         if (!startEndTime.isNullOrEmpty() && startEndTime.size != 2) throw IllegalArgumentException("StartEndTime empty or doesnt have size 2")
         if (!(openWaitlist.isNullOrEmpty() || (openWaitlist.isNotEmpty() && openWaitlist in fields.waitlistTypes))) throw IllegalArgumentException("Invalid openWaitlist field")
         if (!(level.isNullOrEmpty() || (level.isNotEmpty() && level in fields.levels))) throw IllegalArgumentException("Invalid level field")

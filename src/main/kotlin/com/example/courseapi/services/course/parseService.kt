@@ -39,6 +39,11 @@ class ParseService{
     fun parseAllFields(html: String): Map<String, List<Field>> {
         val doc = Jsoup.parse(html) // parse once, reuse for all selectors
         val result = mutableMapOf<String, List<Field>>()
+
+        // Attributes
+        result["attributes"] = doc.select("select#sectionFilterAttributes option[value]").map { opt ->
+            Field(opt.attr("value").trim())
+        }
         
         // Terms
         result["terms"] = doc.select("select#termFilter option[value]").map { opt ->

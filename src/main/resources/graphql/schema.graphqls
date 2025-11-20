@@ -75,6 +75,7 @@ type Query {
     ): CourseResult
 
     getScheduleByCourses(
+        delivery: [String]
         courses: [String]
         campus: [String]
         term: String
@@ -84,13 +85,13 @@ type Query {
     ): ScheduleResult
 
     getFillerByAttributes(
+        delivery: [String]
         attributes: [String]
         courses: [String]
         campus: [String]
         term: String
         preferredStart: String
         preferredEnd: String
-        ignoreWeb: Boolean
     ): ScheduleResult
 
     getTerms: FieldResult

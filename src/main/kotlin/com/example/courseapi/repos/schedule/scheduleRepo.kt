@@ -17,11 +17,12 @@ class ScheduleRepo(private val course: CourseRepo){
     data class Interval(val day: Day, val start: Int, val end: Int)
     val timeSlotRegex = Regex("""([MTWRFSU]+)\s+(\d{1,2}:\d{2}[ap]m)-(\d{1,2}:\d{2}[ap]m)""", RegexOption.IGNORE_CASE)
 
-    suspend fun getScheduleByCourses(courses: List<String>, campus: List<String>, term: String, optimizeFreeTime: Boolean? = false, preferredStart: String?, preferredEnd: String?): List<Schedule> = coroutineScope{
+    suspend fun getScheduleByCourses(delivery: List<String>?=null, courses: List<String>, campus: List<String>, term: String, optimizeFreeTime: Boolean? = false, preferredStart: String?, preferredEnd: String?): List<Schedule> = coroutineScope{
         val parsed = courses.mapNotNull { val p = it.trim().split(" "); if (p.size == 2) p[0] to p[1] else null }
         val fetched = parsed.map { (subject, num) ->
             async {
                 val sections = course.getCourseByInfo(
+                    delivery = delivery,
                     subject = listOf(subject),
                     courseNum = num,
                     campus = campus,
@@ -46,48 +47,61 @@ class ScheduleRepo(private val course: CourseRepo){
         if (optimizeFreeTime == true) schedules.sortedByDescending { it.freeTime } else schedules
     }
 
-    suspend fun getFillerByAttributes(attributes: List<String>, courses: List<String>, campus: List<String>, term: String, preferredStart: String? = null, preferredEnd: String? = null, ignoreWeb: Boolean? = false): List<Schedule> {
-        val attributesList = course.getCourseByInfo(campus = campus, term = term, attributes = attributes)
-        val schedules = getScheduleByCourses(courses, campus, term, true, preferredStart, preferredEnd)
+    suspend fun getFillerByAttributes(delivery: List<String>?=null,attributes: List<String>, courses: List<String>, campus: List<String>, term: String, preferredStart: String? = null, preferredEnd: String? = null): List<Schedule> {
+        val attributesList = course.getCourseByInfo(
+            campus = campus,
+            term = term,
+            attributes = attributes,
+            delivery = delivery
+        )
+
+        val schedules = getScheduleByCourses(
+            delivery, courses, campus, term, true, preferredStart, preferredEnd
+        )
+
         val startMin = toMinutes(preferredStart ?: "12:00am")
         val endMin = toMinutes(preferredEnd ?: "11:59pm")
-        return schedules.map { s ->
-            if (ignoreWeb != true) {
-                // Include up to 10 web courses, ignoring timing (web courses don't take up time slots)
-                val webCourses = attributesList
-                    .filter { it.delivery.contains("WEB", ignoreCase = true) }
-                    .filter { c ->
-                        parseTimeSlot(c.delivery).any { iv -> iv.start < endMin && iv.end > startMin }
-                    }
-                    .take(10)
-                s.copy(courses = s.courses + webCourses)
 
-            } else {
-                val nonWebCourses = attributesList.filter { !it.delivery.contains("WEB", ignoreCase = true) }
-                val existingIntervalsByDay = mutableMapOf<Day, MutableList<Interval>>()
-                for (c in s.courses) { for (iv in parseTimeSlot(c.delivery)) { existingIntervalsByDay.computeIfAbsent(iv.day) { mutableListOf() }.add(iv) } }
-                val compatible = nonWebCourses.filter { filler ->
-                    val ivs = parseTimeSlot(filler.delivery).toList()
-                    if (ivs.isEmpty()) { return@filter false }
-                    val fitsAll = ivs.all { iv ->
-                        val inWindow = iv.start >= startMin && iv.end <= endMin
-                        if (!inWindow) { return@all false }
-                        val existingOnDay = existingIntervalsByDay[iv.day] ?: emptyList()
-                        val conflict = existingOnDay.any { e -> iv.start < e.end && iv.end > e.start }
-                        if (conflict) { return@all false }
-                        true
-                    }
-                    fitsAll
+        return schedules.map { s ->
+
+            // Build occupied intervals for this schedule
+            val existingIntervalsByDay = mutableMapOf<Day, MutableList<Interval>>()
+            for (c in s.courses) {
+                for (iv in parseTimeSlot(c.delivery)) {
+                    existingIntervalsByDay.computeIfAbsent(iv.day) { mutableListOf() }.add(iv)
                 }
-                if (compatible.isEmpty()) return@map s
-                val best = compatible.maxByOrNull { filler ->
-                    val newCourses = s.courses + filler
-                    val newSchedule = Schedule(newCourses, freeTimeForSchedule(newCourses))
-                    val newFree = getFreeSlots(newSchedule, startMin, endMin)
-                    newFree.values.sumOf { slots -> slots.sumOf { it.second - it.first } }
-                }!!
-                s.copy(courses = s.courses + best)
             }
+
+            // Filter attributesList for courses that can fit into THIS schedule
+            val compatible = attributesList.filter { filler ->
+                val ivs = parseTimeSlot(filler.delivery).toList()
+
+                // Web courses => always compatible by timing
+                if (ivs.isEmpty()) return@filter true
+
+                ivs.all { iv ->
+                    val inWindow = iv.start >= startMin && iv.end <= endMin
+                    if (!inWindow) return@all false
+
+                    val existing = existingIntervalsByDay[iv.day] ?: emptyList()
+                    val conflict = existing.any { e -> iv.start < e.end && iv.end > e.start }
+                    if (conflict) return@all false
+
+                    true
+                }
+            }
+
+            if (compatible.isEmpty()) return@map s
+
+            // Choose best filler for THIS schedule only
+            val best = compatible.maxByOrNull { filler ->
+                val newCourses = s.courses + filler
+                val newSchedule = Schedule(newCourses, freeTimeForSchedule(newCourses))
+                val newFree = getFreeSlots(newSchedule, startMin, endMin)
+                newFree.values.sumOf { slots -> slots.sumOf { it.second - it.first } }
+            }!!
+
+            s.copy(courses = s.courses + best)
         }
     }
 

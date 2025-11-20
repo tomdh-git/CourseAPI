@@ -17,7 +17,8 @@ data class ValidFields(
     val deliveryTypes: Set<String>,
     val levels: Set<String>,
     val days: Set<String>,
-    val waitlistTypes: Set<String>
+    val waitlistTypes: Set<String>,
+    val attributes: Set<String>
 )
 
 @Repository
@@ -99,6 +100,7 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
         val levels = allFields["levels"]?.map { it.name }?.toSet() ?: emptySet()
         val days = allFields["days"]?.map { it.name }?.toSet() ?: emptySet()
         val waitlistTypes = allFields["waitlist"]?.map { it.name }?.toSet() ?: emptySet()
+        val attributes = allFields["attributes"]?.map { it.name }?.toSet() ?: emptySet()
 
         val fields = ValidFields(
             subjects = subjects,
@@ -107,7 +109,8 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
             deliveryTypes = deliveryTypes,
             levels = levels,
             days = days,
-            waitlistTypes = waitlistTypes
+            waitlistTypes = waitlistTypes,
+            attributes = attributes
         )
 
         cachedValidFields = fields
