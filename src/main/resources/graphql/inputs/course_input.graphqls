@@ -1,0 +1,20 @@
+input CourseByInfoInput{
+    subject: [String]
+    courseNum: String
+    campus: [String]
+    attributes: [String]
+    delivery: [String]
+    term: String
+    openWaitlist: String
+    crn: Int
+    partOfTerm: [String]
+    level: String
+    courseTitle: String
+    daysFilter: [String]
+    creditHours: Int
+    startEndTime: [String]
+}
+input CourseByCRNInput{
+    crn: Int
+    term: String
+}

@@ -1,0 +1,23 @@
+type Course {
+    subject: String
+    courseNum: String
+    title: String
+    section: String
+    crn: Int
+    campus: String
+    credits: Int
+    capacity: String
+    requests: String
+    delivery: String
+}
+
+type SuccessCourse {
+    courses: [Course]
+}
+
+type ErrorCourse {
+    error: String
+    message: String
+}
+
+union CourseResult = SuccessCourse | ErrorCourse

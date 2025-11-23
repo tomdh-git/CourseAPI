@@ -1,0 +1,18 @@
+input ScheduleByCourseInput{
+    delivery: [String]
+    courses: [String]
+    campus: [String]
+    term: String
+    optimizeFreeTime: Boolean
+    preferredStart: String
+    preferredEnd: String
+}
+input FillerByAttributesInput{
+    delivery: [String]
+    attributes: [String]
+    courses: [String]
+    campus: [String]
+    term: String
+    preferredStart: String
+    preferredEnd: String
+}

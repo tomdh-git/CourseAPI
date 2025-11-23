@@ -1,0 +1,14 @@
+type Field {
+    name: String
+}
+
+type SuccessField {
+    fields: [Field]
+}
+
+type ErrorField {
+    error: String
+    message: String
+}
+
+union FieldResult = SuccessField | ErrorField

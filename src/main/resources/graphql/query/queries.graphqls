@@ -1,0 +1,19 @@
+type Query {
+    getCourseByInfo(
+        input: CourseByInfoInput
+    ): CourseResult
+
+    getCourseByCRN(
+        input: CourseByCRNInput
+    ): CourseResult
+
+    getScheduleByCourses(
+        input: ScheduleByCourseInput
+    ): ScheduleResult
+
+    getFillerByAttributes(
+        input: FillerByAttributesInput
+    ): ScheduleResult
+
+    getTerms: FieldResult
+}

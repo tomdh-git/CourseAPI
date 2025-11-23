@@ -1,0 +1,15 @@
+type Schedule {
+    courses: [Course]
+    freeTime: Int
+}
+
+type SuccessSchedule {
+    schedules: [Schedule]
+}
+
+type ErrorSchedule {
+    error: String
+    message: String
+}
+
+union ScheduleResult = SuccessSchedule | ErrorSchedule
