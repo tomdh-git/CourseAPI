@@ -14,11 +14,24 @@ import kotlin.collections.zipWithNext
 @Repository
 class ScheduleRepo(private val course: CourseRepo){
     enum class Day { M, T, W, R, F, S, U }
-    data class Interval(val day: Day, val start: Int, val end: Int)
-    val timeSlotRegex = Regex("""([MTWRFSU]+)\s+(\d{1,2}:\d{2}[ap]m)-(\d{1,2}:\d{2}[ap]m)""", RegexOption.IGNORE_CASE)
+    data class Interval(
+        val day: Day,
+        val start: Int,
+        val end: Int
+    )
+    val timeSlotRegex = Regex(
+        """([MTWRFSU]+)\s+(\d{1,2}:\d{2}[ap]m)-(\d{1,2}:\d{2}[ap]m)""",
+        RegexOption.IGNORE_CASE
+    )
 
     suspend fun getScheduleByCourses(delivery: List<String>?=null, courses: List<String>, campus: List<String>, term: String, optimizeFreeTime: Boolean? = false, preferredStart: String?, preferredEnd: String?): List<Schedule> = coroutineScope{
-        val parsed = courses.mapNotNull { val p = it.trim().split(" "); if (p.size == 2) p[0] to p[1] else null }
+        val parsed = courses.mapNotNull {
+            val p = it
+                .trim()
+                .split(" ")
+            if (p.size == 2) p[0] to p[1]
+            else null
+        }
         val fetched = parsed.map { (subject, num) ->
             async {
                 val sections = course.getCourseByInfo(
@@ -34,17 +47,28 @@ class ScheduleRepo(private val course: CourseRepo){
             { it.first },
             { it.second }
         ).mapValues { it.value.flatten() }
-
         val valid = fetched.filterValues { it.isNotEmpty() }
         if (valid.isEmpty()) throw QueryException("No valid schedules found")
         val combos = cartesianProduct(valid.values.toList())
         if (combos.isEmpty()) throw QueryException("No schedule combos found")
         val startMin = toMinutes(preferredStart ?: "12:00am")
         val endMin = toMinutes(preferredEnd ?: "11:59pm")
-        val validCombos = combos.asSequence().filter { combo -> !timeConflicts(combo.asSequence().map { it.delivery }, startMin, endMin) }.toList()
+        val validCombos = combos.asSequence()
+            .filter {
+                combo ->
+                !timeConflicts(
+                    combo.asSequence().map { it.delivery },
+                    startMin,
+                    endMin)
+            }.toList()
         if (validCombos.isEmpty()) throw QueryException("No valid schedule combos found")
-        val schedules = validCombos.map { Schedule(it, freeTimeForSchedule(it)) }
-        if (optimizeFreeTime == true) schedules.sortedByDescending { it.freeTime } else schedules
+        val schedules = validCombos.map {
+            Schedule(
+                it,
+                freeTimeForSchedule(it)
+            ) }
+        if (optimizeFreeTime == true) schedules.sortedByDescending { it.freeTime }
+        else schedules
     }
 
     suspend fun getFillerByAttributes(delivery: List<String>?=null,attributes: List<String>, courses: List<String>, campus: List<String>, term: String, preferredStart: String? = null, preferredEnd: String? = null): List<Schedule> {
@@ -54,53 +78,47 @@ class ScheduleRepo(private val course: CourseRepo){
             attributes = attributes,
             delivery = delivery
         )
-
         val schedules = getScheduleByCourses(
-            delivery, courses, campus, term, true, preferredStart, preferredEnd
+            delivery,
+            courses,
+            campus,
+            term,
+            true,
+            preferredStart,
+            preferredEnd
         )
-
         val startMin = toMinutes(preferredStart ?: "12:00am")
         val endMin = toMinutes(preferredEnd ?: "11:59pm")
-
         return schedules.map { s ->
-
-            // Build occupied intervals for this schedule
             val existingIntervalsByDay = mutableMapOf<Day, MutableList<Interval>>()
             for (c in s.courses) {
                 for (iv in parseTimeSlot(c.delivery)) {
                     existingIntervalsByDay.computeIfAbsent(iv.day) { mutableListOf() }.add(iv)
                 }
             }
-
-            // Filter attributesList for courses that can fit into THIS schedule
             val compatible = attributesList.filter { filler ->
                 val ivs = parseTimeSlot(filler.delivery).toList()
-
-                // Web courses => always compatible by timing
                 if (ivs.isEmpty()) return@filter true
-
                 ivs.all { iv ->
                     val inWindow = iv.start >= startMin && iv.end <= endMin
                     if (!inWindow) return@all false
-
                     val existing = existingIntervalsByDay[iv.day] ?: emptyList()
-                    val conflict = existing.any { e -> iv.start < e.end && iv.end > e.start }
+                    val conflict = existing.any {
+                        e -> iv.start < e.end && iv.end > e.start
+                    }
                     if (conflict) return@all false
-
                     true
                 }
             }
-
             if (compatible.isEmpty()) return@map s
-
-            // Choose best filler for THIS schedule only
             val best = compatible.maxByOrNull { filler ->
                 val newCourses = s.courses + filler
                 val newSchedule = Schedule(newCourses, freeTimeForSchedule(newCourses))
                 val newFree = getFreeSlots(newSchedule, startMin, endMin)
-                newFree.values.sumOf { slots -> slots.sumOf { it.second - it.first } }
+                newFree.values.sumOf {
+                    slots -> slots.sumOf { it.second - it.first }
+                }
             }!!
-
             s.copy(courses = s.courses + best)
         }
     }
@@ -110,33 +128,25 @@ class ScheduleRepo(private val course: CourseRepo){
         val s = t.trim()
         var h = 0
         var m = 0
-
-        // Parse hours
         while (i < s.length && s[i].isDigit()) {
             h = h * 10 + (s[i] - '0')
             i++
         }
-
         if (i >= s.length || s[i] != ':') return 0
-        i++ // skip ':'
-
-        // Parse minutes
+        i++
         while (i < s.length && s[i].isDigit()) {
             m = m * 10 + (s[i] - '0')
             i++
         }
-
-        // Parse am/pm - avoid drop() and multiple allocations
         var isPm = false
         if (i < s.length - 1) {
             val ch1 = s[i]
             val ch2 = if (i + 1 < s.length) s[i + 1] else ' '
-            isPm = (ch1 == 'p' || ch1 == 'P') && (ch2 == 'm' || ch2 == 'M')
+            isPm = (ch1 == 'p' || ch1 == 'P')
+                    && (ch2 == 'm' || ch2 == 'M')
         }
-
         if (h == 12) h = 0
         if (isPm) h += 12
-
         return h * 60 + m
     }
 
@@ -170,7 +180,6 @@ class ScheduleRepo(private val course: CourseRepo){
                 intervalsByDay[dayIndex]!!.add(iv)
             }
         }
-        // Check for overlaps
         for (dayIntervals in intervalsByDay) {
             if (dayIntervals == null) continue
             dayIntervals.sortBy { it.start }
@@ -211,37 +220,22 @@ class ScheduleRepo(private val course: CourseRepo){
 
     fun getFreeSlots(schedule: Schedule, startMin: Int, endMin: Int): Map<Day, List<Pair<Int, Int>>> {
         val dayBusy = mutableMapOf<Day, MutableList<Pair<Int, Int>>>()
-
         for (c in schedule.courses) {
             for (iv in parseTimeSlot(c.delivery)) {
                 dayBusy.computeIfAbsent(iv.day) { mutableListOf() }.add(iv.start to iv.end)
             }
         }
-
         val free = mutableMapOf<Day, List<Pair<Int, Int>>>()
-
         for (day in Day.entries) {
             val busy = dayBusy[day]?.sortedBy { it.first } ?: emptyList()
             val dailyFree = mutableListOf<Pair<Int, Int>>()
-
             var cur = startMin
-
             for ((bs, be) in busy) {
-                // If class starts before preferred end but ends after preferred end,
-                // then free time before it is invalid because the class extends beyond our window
-                // Example: preferred end is 4:30pm, class is 4:25pm-5:20pm
-                // Free time before 4:25pm is not valid because the class extends beyond 4:30pm
                 if (bs < endMin && be > endMin) {
-                    // Class extends beyond preferred end, invalidates free time before it
-                    // Don't add any free slots before this class
                     cur = endMin
                     break
                 }
-                
-                // Skip blocks that are completely outside the preferred window
                 if (be <= startMin || bs >= endMin) continue
-
-                // Class is within or overlaps preferred window
                 val bsClipped = maxOf(bs, startMin)
                 if (bsClipped > cur) {
                     val freeEnd = minOf(bsClipped, endMin)
@@ -249,40 +243,35 @@ class ScheduleRepo(private val course: CourseRepo){
                         dailyFree.add(cur to freeEnd)
                     }
                 }
-
-                // advance cur to the end of this busy block (but clip to endMin)
-                cur = maxOf(cur, minOf(be, endMin))
+                cur = maxOf(
+                    cur,
+                    minOf(
+                        be,
+                        endMin
+                    ))
                 if (cur >= endMin) break
             }
-
-            // Add remaining free time at the end of the day (if any)
             if (cur < endMin) dailyFree.add(cur to endMin)
             free[day] = dailyFree
         }
-
         return free
     }
 
     fun <T> cartesianProduct(lists: List<List<T>>): List<List<T>> {
         if (lists.isEmpty() || lists.any { it.isEmpty() }) return emptyList()
-        // Calculate total result size upfront to pre-allocate
         var size = 1
         for (list in lists) {
             size *= list.size
-            if (size > 100000) return emptyList() // Safeguard against memory explosion
+            if (size > 100000) return emptyList()
         }
-        
         val result = ArrayList<List<T>>(size)
         val indices = IntArray(lists.size)
-        
         while (true) {
             val combo = ArrayList<T>(lists.size)
             for (i in lists.indices) {
                 combo.add(lists[i][indices[i]])
             }
             result.add(combo)
-            
-            // Increment indices like an odometer
             var pos = lists.size - 1
             while (pos >= 0) {
                 indices[pos]++

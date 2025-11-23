@@ -9,10 +9,23 @@ import org.springframework.stereotype.Service
 
 @Service
 class CourseService(private val repo: CourseRepo) {
-    suspend fun getCourseByInfo(subject: List<String>? = null, courseNum: String? = null, campus: List<String>, attributes: List<String>? = null, delivery: List<String>? = null, term: String, openWaitlist: String? = null, crn: Int? = null, partOfTerm: List<String>? = null, level: String? = null, courseTitle: String? = null, daysFilter: List<String>? = null, creditHours: Int? = null, startEndTime: List<String>? = null): List<Course>{
-        // Fetch and cache valid fields (also persists token via RequestService)
+    suspend fun getCourseByInfo(
+        subject: List<String>? = null,
+        courseNum: String? = null,
+        campus: List<String>,
+        attributes: List<String>? = null,
+        delivery: List<String>? = null,
+        term: String,
+        openWaitlist: String? = null,
+        crn: Int? = null,
+        partOfTerm: List<String>? = null,
+        level: String? = null,
+        courseTitle: String? = null,
+        daysFilter: List<String>? = null,
+        creditHours: Int? = null,
+        startEndTime: List<String>? = null
+    ): List<Course>{
         val fields = repo.getOrFetchValidFields()
-
         if (campus.isEmpty() || !campus.all { it in fields.campuses }) throw IllegalArgumentException("Campuses empty or invalid")
         if (term.isEmpty() || term !in fields.terms) throw IllegalArgumentException("Term is empty or invalid")
         if (!(subject.isNullOrEmpty() || subject.all { it in fields.subjects })) throw IllegalArgumentException("Invalid subjects field")
@@ -26,13 +39,34 @@ class CourseService(private val repo: CourseRepo) {
         if (!(openWaitlist.isNullOrEmpty() || (openWaitlist.isNotEmpty() && openWaitlist in fields.waitlistTypes))) throw IllegalArgumentException("Invalid openWaitlist field")
         if (!(level.isNullOrEmpty() || (level.isNotEmpty() && level in fields.levels))) throw IllegalArgumentException("Invalid level field")
         if (!(daysFilter.isNullOrEmpty() || (daysFilter.isNotEmpty() && daysFilter.all { it in fields.days }))) throw IllegalArgumentException("Invalid daysFilter field")
-
-        val res = repo.getCourseByInfo(subject, courseNum, campus, attributes, delivery, term, openWaitlist, crn, partOfTerm, level, courseTitle, daysFilter, creditHours, startEndTime)
+        val res = repo.getCourseByInfo(
+            subject,
+            courseNum,
+            campus,
+            attributes,
+            delivery,
+            term,
+            openWaitlist,
+            crn,
+            partOfTerm,
+            level,
+            courseTitle,
+            daysFilter,
+            creditHours,
+            startEndTime
+        )
         return res.ifEmpty { throw QueryException("Desired course does not exist or no courses found") }
     }
 
-    suspend fun getCourseByCRN(crn: Int? = 0, term: String = ""): List<Course> {
-        return getCourseByInfo(crn = crn, term = term, campus = listOf("All"))
+    suspend fun getCourseByCRN(
+        crn: Int? = 0,
+        term: String = ""
+    ): List<Course> {
+        return getCourseByInfo(
+            crn = crn,
+            term = term,
+            campus = listOf("All")
+        )
     }
 
     suspend fun getTerms(): List<Field>{

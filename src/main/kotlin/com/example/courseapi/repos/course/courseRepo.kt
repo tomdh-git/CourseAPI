@@ -26,13 +26,26 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
     @Volatile private var cachedValidFields: ValidFields? = null
     @Volatile private var cacheTimestamp: Long = 0
     private val fieldsCacheLock = Mutex()
-    private val fieldsCacheTimeout = 3_600_000L // 1 hour in milliseconds
-    suspend fun getCourseByInfo(subject: List<String>? = null, courseNum: String? = null, campus: List<String>, attributes: List<String>? = null, delivery: List<String>? = null, term: String, openWaitlist: String? = null, crn: Int? = null, partOfTerm: List<String>? = null, level: String? = null, courseTitle: String? = null, daysFilter: List<String>? = null, creditHours: Int? = null, startEndTime: List<String>? = null): List<Course> {
-        // get or reuse token (saves one GET on warm requests)
+    private val fieldsCacheTimeout = 3_600_000L
+
+    suspend fun getCourseByInfo(
+        subject: List<String>? = null,
+        courseNum: String? = null,
+        campus: List<String>,
+        attributes: List<String>? = null,
+        delivery: List<String>? = null,
+        term: String,
+        openWaitlist: String? = null,
+        crn: Int? = null,
+        partOfTerm: List<String>? = null,
+        level: String? = null,
+        courseTitle: String? = null,
+        daysFilter: List<String>? = null,
+        creditHours: Int? = null,
+        startEndTime: List<String>? = null
+    ): List<Course> {
         val token = requests.getOrFetchToken()
         if (token.isEmpty()) throw APIException("Empty Token")
-
-        // build form
         val formParts = ArrayList<String>(24)
         formParts.add("_token=${token.encodeURLParameter()}")
         formParts.add("term=${term.encodeURLParameter()}")
@@ -54,13 +67,12 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
         partOfTerm?.forEach { formParts.add("partOfTerm%5B%5D=${it.encodeURLParameter()}") }
         daysFilter?.forEach { formParts.add("daysFilter%5B%5D=${it.encodeURLParameter()}") }
         val formBody = formParts.joinToString("&")
-
-//        println(formParts.joinToString("\n"))
-
-        // send post request
         var resp = requests.postResultResponse(formBody)
-        // page expired check
-        if (resp.status == 419 || resp.body.contains("Page Expired", ignoreCase = true)) {
+        if (resp.status == 419 ||
+            resp.body.contains(
+                "Page Expired",
+                ignoreCase = true
+            )) {
             val token = requests.getOrFetchToken()
             if (token.isNotEmpty()) {
                 formParts[0] = "_token=${token.encodeURLParameter()}"
@@ -68,14 +80,15 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
                 resp = requests.postResultResponse(formBody)
             }
         }
-        //too many results
-        if (resp.body.contains("Your query returned too many results.", ignoreCase = true)) { throw QueryException("Query returned too many results.") }
-        // parse
+        if (resp.body.contains(
+                "Your query returned too many results.",
+                ignoreCase = true
+        )) { throw QueryException("Query returned too many results.") }
         return parse.parseCourses(resp.body)
     }
 
     suspend fun getTerms(): List<Field>{
-        val termsRaw = requests.getTokenResponse() //its the same page anyways
+        val termsRaw = requests.getTokenResponse()
         if (termsRaw.isEmpty()) throw APIException("Empty terms")
         return parse.parseTerms(termsRaw)
     }
@@ -84,14 +97,9 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
         val now = System.currentTimeMillis()
         val cached = cachedValidFields
         if (cached != null && now - cacheTimestamp < fieldsCacheTimeout) return cached
-
-        // Ensure token is cached for subsequent POSTs
         requests.getOrFetchToken()
-
         val html = requests.getTokenResponse()
         if (html.isEmpty()) throw APIException("Empty response when fetching valid fields")
-
-        // Batch parse all fields in one pass (single HTML parse) - much more efficient
         val allFields = parse.parseAllFields(html)
         val subjects = allFields["subjects"]?.map { it.name }?.toSet() ?: emptySet()
         val campuses = allFields["campuses"]?.map { it.name }?.toSet() ?: emptySet()
@@ -101,7 +109,6 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
         val days = allFields["days"]?.map { it.name }?.toSet() ?: emptySet()
         val waitlistTypes = allFields["waitlist"]?.map { it.name }?.toSet() ?: emptySet()
         val attributes = allFields["attributes"]?.map { it.name }?.toSet() ?: emptySet()
-
         val fields = ValidFields(
             subjects = subjects,
             campuses = campuses,
@@ -112,7 +119,6 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
             waitlistTypes = waitlistTypes,
             attributes = attributes
         )
-
         cachedValidFields = fields
         cacheTimestamp = now
         fields
