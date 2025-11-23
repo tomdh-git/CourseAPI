@@ -2,7 +2,6 @@ package com.example.courseapi.repos.course
 
 import com.example.courseapi.exceptions.*
 import com.example.courseapi.models.course.Course
-import com.example.courseapi.models.misc.Field
 import io.ktor.http.encodeURLParameter
 import org.springframework.stereotype.Repository
 import com.example.courseapi.services.course.ParseService
@@ -28,21 +27,7 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
     private val fieldsCacheLock = Mutex()
     private val fieldsCacheTimeout = 3_600_000L
 
-    suspend fun getCourseByInfo(
-        subject: List<String>? = null,
-        courseNum: String? = null,
-        campus: List<String>,
-        attributes: List<String>? = null,
-        delivery: List<String>? = null,
-        term: String,
-        openWaitlist: String? = null,
-        crn: Int? = null,
-        partOfTerm: List<String>? = null,
-        level: String? = null,
-        courseTitle: String? = null,
-        daysFilter: List<String>? = null,
-        creditHours: Int? = null,
-        startEndTime: List<String>? = null
+    suspend fun getCourseByInfo(subject: List<String>? = null, courseNum: String? = null, campus: List<String>, attributes: List<String>? = null, delivery: List<String>? = null, term: String, openWaitlist: String? = null, crn: Int? = null, partOfTerm: List<String>? = null, level: String? = null, courseTitle: String? = null, daysFilter: List<String>? = null, creditHours: Int? = null, startEndTime: List<String>? = null
     ): List<Course> {
         val token = requests.getOrFetchToken()
         if (token.isEmpty()) throw APIException("Empty Token")
@@ -85,12 +70,6 @@ class CourseRepo(private val requests: RequestService, private val parse: ParseS
                 ignoreCase = true
         )) { throw QueryException("Query returned too many results.") }
         return parse.parseCourses(resp.body)
-    }
-
-    suspend fun getTerms(): List<Field>{
-        val termsRaw = requests.getTokenResponse()
-        if (termsRaw.isEmpty()) throw APIException("Empty terms")
-        return parse.parseTerms(termsRaw)
     }
 
     suspend fun getOrFetchValidFields(): ValidFields = fieldsCacheLock.withLock {

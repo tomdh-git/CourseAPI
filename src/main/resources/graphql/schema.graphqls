@@ -51,27 +51,34 @@ union CourseResult = SuccessCourse | ErrorCourse
 union ScheduleResult = SuccessSchedule | ErrorSchedule
 union FieldResult = SuccessField | ErrorField
 
+input CourseByInfoInput{
+    subject: [String]
+    courseNum: String
+    campus: [String]
+    attributes: [String]
+    delivery: [String]
+    term: String
+    openWaitlist: String
+    crn: Int
+    partOfTerm: [String]
+    level: String
+    courseTitle: String
+    daysFilter: [String]
+    creditHours: Int
+    startEndTime: [String]
+}
+input CourseByCRNInput{
+    crn: Int
+    term: String
+}
+
 type Query {
     getCourseByInfo(
-        subject: [String]
-        courseNum: String
-        campus: [String]
-        attributes: [String]
-        delivery: [String]
-        term: String
-        openWaitlist: String
-        crn: Int
-        partOfTerm: [String]
-        level: String
-        courseTitle: String
-        daysFilter: [String]
-        creditHours: Int
-        startEndTime: [String]
+        input: CourseByInfoInput
     ): CourseResult
 
     getCourseByCRN(
-        crn: Int
-        term: String
+        input: CourseByCRNInput
     ): CourseResult
 
     getScheduleByCourses(
