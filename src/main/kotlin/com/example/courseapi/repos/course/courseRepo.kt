@@ -14,8 +14,10 @@ class CourseRepo(private val requests: RequestUtils,private val parse: ParseUtil
     suspend fun getCourseByInfo(input: CourseByInfoInput): List<Course> {
         val token: String = requests.getOrFetchToken()
         if (token.isEmpty()) throw APIException("Empty Token")
+        
         val formParts = ArrayList<String>(24)
         val formBody = formRequest(formParts, input, token).joinToString("&")
+        
         var resp = requests.postResultResponse(formBody)
         val isExpired = resp.status == 419 || resp.body.contains("Page Expired", ignoreCase = true)
         if (isExpired) {
@@ -26,8 +28,10 @@ class CourseRepo(private val requests: RequestUtils,private val parse: ParseUtil
                 resp = requests.postResultResponse(formBody)
             }
         }
+        
         val hasTooManyResults = resp.body.contains("Your query returned too many results.", ignoreCase = true)
         if (hasTooManyResults) { throw QueryException("Query returned too many results.") }
+        
         return parse.parseCourses(resp.body)
     }
 }
