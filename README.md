@@ -37,12 +37,12 @@ http://localhost:8080/graphql
 
 ## Example Queries
 
-### getCourseByInfo
+### [getCourseByInfo](https://github.com/tomdh-git/CourseAPI/blob/master/example_queries/getCourseByInfo.md)
 
-### getCourseByCRN
+### [getCourseByCRN](https://github.com/tomdh-git/CourseAPI/blob/master/example_queries/getCourseByCRN.md)
 
-### getScheduleByCourses
+### [getScheduleByCourses](https://github.com/tomdh-git/CourseAPI/blob/master/example_queries/getScheduleByCourses.md)
 
-### getFillerByAttributes
+### [getFillerByAttributes](https://github.com/tomdh-git/CourseAPI/blob/master/example_queries/getFillerByAttributes.md)
 
-### getTerms
+### [getTerms](https://github.com/tomdh-git/CourseAPI/blob/master/example_queries/getTerms.md)
