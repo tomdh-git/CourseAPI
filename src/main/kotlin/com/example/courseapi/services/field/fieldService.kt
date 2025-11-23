@@ -1,7 +1,7 @@
 package com.example.courseapi.services.field
 
 import com.example.courseapi.exceptions.APIException
-import com.example.courseapi.models.misc.Field
+import com.example.courseapi.models.field.Field
 import com.example.courseapi.repos.field.FieldRepo
 import org.springframework.stereotype.Service
 

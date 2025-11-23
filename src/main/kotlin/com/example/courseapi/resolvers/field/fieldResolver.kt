@@ -1,6 +1,6 @@
-package com.example.courseapi.resolvers
+package com.example.courseapi.resolvers.field
 
-import com.example.courseapi.models.misc.FieldResult
+import com.example.courseapi.models.field.FieldResult
 import com.example.courseapi.resolvers.utils.field.fieldSafe
 import com.example.courseapi.services.field.FieldService
 import org.springframework.graphql.data.method.annotation.QueryMapping

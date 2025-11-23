@@ -1,4 +1,4 @@
-package com.example.courseapi.models.misc
+package com.example.courseapi.models.field
 
 sealed interface FieldResult
 data class SuccessField(

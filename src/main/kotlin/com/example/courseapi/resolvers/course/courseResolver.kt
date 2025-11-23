@@ -1,4 +1,4 @@
-package com.example.courseapi.resolvers
+package com.example.courseapi.resolvers.course
 
 import com.example.courseapi.models.course.CourseResult
 import com.example.courseapi.models.dto.course.*
