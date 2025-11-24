@@ -1,7 +1,13 @@
 package com.example.courseapi.repos.utils.schedule
 
 import com.example.courseapi.models.course.Course
+import com.example.courseapi.models.dto.course.CourseByInfoInput
+import com.example.courseapi.models.dto.schedule.ScheduleByCourseInput
 import com.example.courseapi.models.schedule.Schedule
+import com.example.courseapi.repos.course.CourseRepo
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 fun generateValidSchedules(
     courseGroups: List<List<Course>>, 
@@ -147,4 +153,33 @@ fun getBestFit(compatible: List<Course>, s: Schedule, startMin: Int, endMin: Int
                 slots -> slots.sumOf { it.second - it.first }
         }
     }!!
+}
+
+fun addFillerCourse(
+    schedule: Schedule,
+    attributesList: List<Course>,
+    startMin: Int,
+    endMin: Int
+): Schedule {
+    val existingIntervalsByDay = getExistingIntervalsByDay(schedule)
+    val compatible = getCompatibleCourse(attributesList, startMin, endMin, existingIntervalsByDay)
+
+    if (compatible.isEmpty()) return schedule
+
+    val best = getBestFit(compatible, schedule, startMin, endMin)
+    return schedule.copy(courses = schedule.courses + best)
+}
+
+suspend fun fetchCourses(parsed: List<Pair<String,String>>, input: ScheduleByCourseInput, course: CourseRepo): Map<Pair<String, String>, List<Course>> = coroutineScope{
+    return@coroutineScope parsed.map { (subject, num) ->
+        async {
+            val sections = course.getCourseByInfo(
+                CourseByInfoInput(delivery = input.delivery,subject = listOf(subject), courseNum = num, campus = input.campus, term = input.term)
+            )
+            subject to num to sections
+        }
+    }.awaitAll().groupBy(
+        { it.first },
+        { it.second }
+    ).mapValues { it.value.flatten() }
 }
