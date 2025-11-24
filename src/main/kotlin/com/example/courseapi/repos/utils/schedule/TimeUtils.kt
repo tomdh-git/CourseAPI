@@ -62,26 +62,6 @@ fun parseTimeSlot(slot: String): Sequence<Interval> = sequence {
     }
 }
 
-fun timeConflicts(times: Sequence<String>, preferredStartMin: Int, preferredEndMin: Int): Boolean {
-    val intervalsByDay = arrayOfNulls<MutableList<Interval>?>(7) // Fixed size array, faster than map
-    for (slot in times) {
-        for (iv in parseTimeSlot(slot)) {
-            if (iv.start < preferredStartMin || iv.end > preferredEndMin) return true
-            val dayIndex = iv.day.ordinal
-            if (intervalsByDay[dayIndex] == null) intervalsByDay[dayIndex] = mutableListOf()
-            intervalsByDay[dayIndex]!!.add(iv)
-        }
-    }
-    for (dayIntervals in intervalsByDay) {
-        if (dayIntervals == null) continue
-        dayIntervals.sortBy { it.start }
-        for (i in 0 until dayIntervals.size - 1) {
-            if (dayIntervals[i + 1].start < dayIntervals[i].end) return true
-        }
-    }
-    return false
-}
-
 fun freeTimeForSchedule(courses: List<Course>): Int {
     val map = arrayOfNulls<MutableList<Pair<Int, Int>>?>(7) // Fixed size array for O(1) access
     for (c in courses) {

@@ -41,12 +41,9 @@ class RequestUtils(private val client: HttpClient) {
     fun warmUpConnection() {
         refreshScope.launch {
             try {
-                println("[WARMUP] Starting connection warmup...")
-                val startTime = System.currentTimeMillis()
                 getCourseList()
-                println("[WARMUP] Connection warmed up in ${System.currentTimeMillis() - startTime}ms")
             } catch (e: Exception) {
-                println("[WARMUP] Warmup failed (this is okay): ${e.message}")
+                //maybe just log it
             }
         }
     }
@@ -58,7 +55,6 @@ class RequestUtils(private val client: HttpClient) {
         
         // Return cached HTML if fresh
         if (cached != null && age < htmlCacheTimeout) {
-            println("[GET] Using cached HTML (age: ${age}ms)")
             return cached
         }
         
@@ -70,11 +66,9 @@ class RequestUtils(private val client: HttpClient) {
             val againAge = againNow - cachedHtmlTs
             
             if (againCached != null && againAge < htmlCacheTimeout) {
-                println("[GET] Using cached HTML (age: ${againAge}ms, double-check)")
                 return againCached
             }
             
-            val startTime = System.currentTimeMillis()
             val initialResponse: HttpResponse = client.get(
                 "https://www.apps.miamioh.edu/courselist/")
             { headers {
@@ -82,7 +76,6 @@ class RequestUtils(private val client: HttpClient) {
                 append("User-Agent", "Mozilla/5.0")
             } }
             val result = initialResponse.bodyAsText()
-            println("[GET] GET request completed: ${System.currentTimeMillis() - startTime}ms")
             
             // Cache the HTML
             cachedHtml = result
@@ -92,15 +85,11 @@ class RequestUtils(private val client: HttpClient) {
     }
 
     suspend fun getToken(): String {
-        val startTime = System.currentTimeMillis()
         val html = getCourseList()
-        val token = tokenRegex.find(html)?.groupValues?.get(1) ?: ""
-        println("[GET] Token extracted: ${System.currentTimeMillis() - startTime}ms")
-        return token
+        return tokenRegex.find(html)?.groupValues?.get(1) ?: ""
     }
 
     suspend fun getOrFetchToken(): String {
-        val startTime = System.currentTimeMillis()
         val now = System.currentTimeMillis()
         val cached = lastToken
         val age = now - lastTokenTs
@@ -117,37 +106,26 @@ class RequestUtils(private val client: HttpClient) {
                     }
                 }
             }
-            println("[TOKEN] Cached token returned (background refresh started): ${System.currentTimeMillis() - startTime}ms")
             return cached // Return current token immediately
         }
         
         // If token is still valid and not in refresh window, return it
         if (cached != null && age < tokenTimeout) {
-            println("[TOKEN] Cached token returned: ${System.currentTimeMillis() - startTime}ms")
             return cached
         }
         
         // If token is expired, fetch synchronously
         return tokenLock.withLock {
             val againNow = System.currentTimeMillis()
-            if (lastToken != null && againNow - lastTokenTs < tokenTimeout) {
-                println("[TOKEN] Cached token returned (double-check): ${System.currentTimeMillis() - startTime}ms")
-                return lastToken!!
-            }
+            if (lastToken != null && againNow - lastTokenTs < tokenTimeout) return lastToken!!
             val token = getToken()
-            lastToken = token; lastTokenTs = againNow
-            println("[TOKEN] Fresh token fetched: ${System.currentTimeMillis() - startTime}ms")
-            token
+            lastToken = token; lastTokenTs = againNow; token
         }
     }
 
     suspend fun postResultResponse(formBody: String): HttpTextResponse {
-        val startTime = System.currentTimeMillis()
         val postResponse = getPostResponse(formBody)
-        println("[POST] POST request completed: ${System.currentTimeMillis() - startTime}ms")
-        
         var resultHtml = postResponse.bodyAsText()
-        println("[POST] Body read: ${System.currentTimeMillis() - startTime}ms")
         
         val hasRedirect = resultHtml.contains("meta http-equiv=\"refresh\"")
         if (hasRedirect) {
@@ -156,10 +134,8 @@ class RequestUtils(private val client: HttpClient) {
                 .find(resultHtml)?.groupValues?.get(1)
             if (redirectUrl != null) {
                 resultHtml = getRedirectResponseHtml(redirectUrl)
-                println("[POST] Redirect followed: ${System.currentTimeMillis() - startTime}ms")
             }
         }
-        println("[POST] Total postResultResponse: ${System.currentTimeMillis() - startTime}ms")
         return HttpTextResponse(
             postResponse.status.value,
             resultHtml
