@@ -20,8 +20,10 @@ class ParseUtils {
         for (tr in rows) {
             val tds = tr.select("td")
             if (tds.size < 9) continue
+
             val subject = tds[0].ownText().trim()
             if (subject.isEmpty()) continue
+
             val courseNum = tds[1].text().trim()
             val title = tds[2].text().trim()
             val section = tds[3].text().trim()
@@ -31,10 +33,12 @@ class ParseUtils {
             val capacity = tds[7].text().trim()
             val requests = tds[8].text().trim()
             val delivery = tds.getOrNull(9)?.text()?.trim() ?: ""
-            list.add(Course(
-                subject, courseNum, title, section, crn,
-                campus, credits, capacity, requests, delivery
-            )
+
+            list.add(
+                Course(
+                    subject, courseNum, title, section, crn,
+                    campus, credits, capacity, requests, delivery
+                )
             )
         }
         return list

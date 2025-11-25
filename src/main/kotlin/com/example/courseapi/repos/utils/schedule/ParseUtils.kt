@@ -5,7 +5,8 @@ fun parseCourses(courses: List<String>): List<Pair<String,String>>{
         val p = it
             .trim()
             .split(" ")
-        if (p.size == 2) p[0] to p[1]
+        val courseValid = p.size == 2
+        if (courseValid) p[0] to p[1]
         else null
     }
 }

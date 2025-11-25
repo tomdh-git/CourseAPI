@@ -16,7 +16,8 @@ suspend fun fetchAttributes(input: FillerByAttributesInput, course: CourseRepo):
     )
 
     return cache.get(cacheKey) ?: run {
-        val startEndTime = if (input.preferredStart != null && input.preferredEnd != null) {
+        val startAndEndTimeValid = input.preferredStart != null && input.preferredEnd != null
+        val startEndTime = if (startAndEndTimeValid) {
             listOf(input.preferredStart, input.preferredEnd)
         } else null
 

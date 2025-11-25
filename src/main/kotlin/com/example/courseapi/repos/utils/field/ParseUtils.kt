@@ -1,6 +1,7 @@
 package com.example.courseapi.repos.utils.field
 
 import com.example.courseapi.models.field.Field
+import com.example.courseapi.models.field.ValidFields
 import org.jsoup.Jsoup
 
 fun parseTerms(html: String): List<Field> {
@@ -38,4 +39,26 @@ fun parseAllFields(html: String): Map<String, List<Field>> {
         Field(opt.attr("value").trim())
     }
     return result
+}
+
+fun getValidFields(allFields: Map<String,List<Field>>): ValidFields{
+    val subjects = allFields["subjects"]?.map { it.name }?.toSet() ?: emptySet()
+    val campuses = allFields["campuses"]?.map { it.name }?.toSet() ?: emptySet()
+    val terms = allFields["terms"]?.map { it.name }?.toSet() ?: emptySet()
+    val deliveryTypes = allFields["delivery"]?.map { it.name }?.toSet() ?: emptySet()
+    val levels = allFields["levels"]?.map { it.name }?.toSet() ?: emptySet()
+    val days = allFields["days"]?.map { it.name }?.toSet() ?: emptySet()
+    val waitlistTypes = allFields["waitlist"]?.map { it.name }?.toSet() ?: emptySet()
+    val attributes = allFields["attributes"]?.map { it.name }?.toSet() ?: emptySet()
+    val fields = ValidFields(
+        subjects = subjects,
+        campuses = campuses,
+        terms = terms,
+        deliveryTypes = deliveryTypes,
+        levels = levels,
+        days = days,
+        waitlistTypes = waitlistTypes,
+        attributes = attributes
+    )
+    return fields
 }

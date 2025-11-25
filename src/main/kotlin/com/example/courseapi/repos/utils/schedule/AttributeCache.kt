@@ -39,9 +39,5 @@ class AttributeCache {
         cache[key] = CacheEntry(System.currentTimeMillis(), courses)
     }
 
-    fun clear() {
-        cache.clear()
-    }
-
     fun size(): Int = cache.size
 }

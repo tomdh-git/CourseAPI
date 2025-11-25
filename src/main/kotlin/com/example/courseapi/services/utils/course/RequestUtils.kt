@@ -1,23 +1,20 @@
 package com.example.courseapi.services.utils.course
 
-import io.ktor.client.HttpClient
-import io.ktor.client.request.get
-import io.ktor.client.request.headers
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsText
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.Job
+import jakarta.annotation.PostConstruct
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Component
-import jakarta.annotation.PostConstruct
+import org.springframework.web.reactive.function.client.WebClient
+import kotlinx.coroutines.reactor.awaitSingle
 
 @Component
-class RequestUtils(private val client: HttpClient) {
+class RequestUtils(private val webClient: WebClient) {
     @Volatile private var lastToken: String? = null
     @Volatile private var lastTokenTs: Long = 0
     private val tokenTimeout = 45_000L
@@ -25,26 +22,21 @@ class RequestUtils(private val client: HttpClient) {
     private val tokenLock = Mutex()
     @Volatile private var refreshJob: Job? = null
     private val refreshScope = CoroutineScope(Dispatchers.IO)
-    
-    // HTML caching for the token page
     @Volatile private var cachedHtml: String? = null
     @Volatile private var cachedHtmlTs: Long = 0
     private val htmlCacheTimeout = 30_000L
     private val htmlCacheLock = Mutex()
-    
-    // Precompiled regex for token extraction
     private val tokenRegex = Regex("""<input[^>]*name="_token"[^>]*value="([^"]+)"""")
     
     data class HttpTextResponse(val status: Int, val body: String)
 
+    private val cookies = java.util.concurrent.ConcurrentHashMap<String, String>()
+
     @PostConstruct
     fun warmUpConnection() {
         refreshScope.launch {
-            try {
-                getCourseList()
-            } catch (e: Exception) {
-                //maybe just log it
-            }
+            try { getCourseList() }
+            catch (e: Exception) { /* maybe just log it **/ }
         }
     }
 
@@ -52,32 +44,33 @@ class RequestUtils(private val client: HttpClient) {
         val now = System.currentTimeMillis()
         val cached = cachedHtml
         val age = now - cachedHtmlTs
-        
-        // Return cached HTML if fresh
-        if (cached != null && age < htmlCacheTimeout) {
-            return cached
-        }
-        
-        // Fetch fresh HTML
+
+        val requestFresh = cached != null && age < htmlCacheTimeout
+        if (requestFresh) return cached
+
         return htmlCacheLock.withLock {
-            // Double-check after acquiring lock
             val againNow = System.currentTimeMillis()
             val againCached = cachedHtml
             val againAge = againNow - cachedHtmlTs
-            
-            if (againCached != null && againAge < htmlCacheTimeout) {
+
+            val requestFreshAgain = againCached != null && againAge < htmlCacheTimeout
+            if (requestFreshAgain) {
                 return againCached
             }
             
-            val initialResponse: HttpResponse = client.get(
-                "https://www.apps.miamioh.edu/courselist/")
-            { headers {
-                append("Accept", "text/html")
-                append("User-Agent", "Mozilla/5.0")
-            } }
-            val result = initialResponse.bodyAsText()
-            
-            // Cache the HTML
+            val result = webClient.get()
+                .uri("https://www.apps.miamioh.edu/courselist/")
+                .header("Accept", "text/html")
+                .header("User-Agent", "Mozilla/5.0")
+                .exchangeToMono { response ->
+                    response.cookies().forEach { (name, cookieList) ->
+                        if (cookieList.isNotEmpty()) {
+                            cookies[name] = cookieList[0].value
+                        }
+                    }
+                    response.bodyToMono(String::class.java)
+                }.awaitSingle()
+
             cachedHtml = result
             cachedHtmlTs = System.currentTimeMillis()
             result
@@ -93,11 +86,12 @@ class RequestUtils(private val client: HttpClient) {
         val now = System.currentTimeMillis()
         val cached = lastToken
         val age = now - lastTokenTs
-        
-        // If token is in refresh window (35s-45s), start background refresh
-        if (cached != null && age >= refreshThreshold && age < tokenTimeout) {
+
+        val inWindow = cached != null && age >= refreshThreshold && age < tokenTimeout
+        if (inWindow) {
             val currentJob = refreshJob
-            if (currentJob == null || !currentJob.isActive) {
+            val jobNotActive = currentJob == null || !currentJob.isActive
+            if (jobNotActive) {
                 refreshJob = refreshScope.launch {
                     tokenLock.withLock {
                         val freshToken = getToken()
@@ -106,18 +100,17 @@ class RequestUtils(private val client: HttpClient) {
                     }
                 }
             }
-            return cached // Return current token immediately
-        }
-        
-        // If token is still valid and not in refresh window, return it
-        if (cached != null && age < tokenTimeout) {
             return cached
         }
-        
-        // If token is expired, fetch synchronously
+
+        val requestFresh = cached != null && age < tokenTimeout
+        if (requestFresh) return cached
+
         return tokenLock.withLock {
             val againNow = System.currentTimeMillis()
-            if (lastToken != null && againNow - lastTokenTs < tokenTimeout) return lastToken!!
+            val lastTokenValid = lastToken != null && againNow - lastTokenTs < tokenTimeout
+            if (lastTokenValid) return lastToken!!
+
             val token = getToken()
             lastToken = token; lastTokenTs = againNow; token
         }
@@ -125,7 +118,7 @@ class RequestUtils(private val client: HttpClient) {
 
     suspend fun postResultResponse(formBody: String): HttpTextResponse {
         val postResponse = getPostResponse(formBody)
-        var resultHtml = postResponse.bodyAsText()
+        var resultHtml = postResponse.body ?: ""
         
         val hasRedirect = resultHtml.contains("meta http-equiv=\"refresh\"")
         if (hasRedirect) {
@@ -137,44 +130,66 @@ class RequestUtils(private val client: HttpClient) {
             }
         }
         return HttpTextResponse(
-            postResponse.status.value,
+            postResponse.statusCode.value(),
             resultHtml
         )
     }
 
-    private suspend fun getPostResponse(formBody: String): HttpResponse {
-        val postResponse: HttpResponse = client.post(
-            "https://www.apps.miamioh.edu/courselist/"
-        ) {
-            headers {
-                append("Accept","text/html")
-                append("Accept-Encoding", "gzip, deflate")
-                append("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
-                append("User-Agent", "Mozilla/5.0")
-                append("Origin", "https://www.apps.miamioh.edu")
-                append("Referer", "https://www.apps.miamioh.edu/courselist/")
-            }
-            setBody(formBody)
+    private val activeRequests = java.util.concurrent.atomic.AtomicInteger(0)
+    private val isBusy = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    private suspend fun getPostResponse(formBody: String): ResponseEntity<String> {
+        if (isBusy.get()) {
+            throw com.example.courseapi.exceptions.ServerBusyException("Server is busy, please try again later")
         }
-        return postResponse
+
+        activeRequests.incrementAndGet()
+
+        return try {
+            kotlinx.coroutines.withTimeout(28_000L) {
+                webClient.post()
+                    .uri("https://www.apps.miamioh.edu/courselist/")
+                    .header("Accept", "text/html")
+                    .header("Accept-Encoding", "gzip, deflate")
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .header("User-Agent", "Mozilla/5.0")
+                    .header("Origin", "https://www.apps.miamioh.edu")
+                    .header("Referer", "https://www.apps.miamioh.edu/courselist/")
+                    .cookies { map -> cookies.forEach { (k, v) -> map.add(k, v) } }
+                    .bodyValue(formBody)
+                    .retrieve()
+                    .toEntity(String::class.java)
+                    .awaitSingle()
+            }
+        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            isBusy.set(true)
+            throw com.example.courseapi.exceptions.ServerBusyException("Request timed out. Please try again later.")
+        } catch (e: org.springframework.web.reactive.function.client.WebClientResponseException) {
+            ResponseEntity.status(e.statusCode).body(e.responseBodyAsString)
+        } finally {
+            val noMoreRequests = activeRequests.decrementAndGet() == 0
+            if (noMoreRequests) { isBusy.set(false) }
+        }
     }
 
     private fun determineRedirect(redirectUrl: String): String {
-        return if (redirectUrl.startsWith("http")) redirectUrl
+        val redirectIsHttp = redirectUrl.startsWith("http")
+        return if (redirectIsHttp) redirectUrl
         else {
-            val path = if (redirectUrl.startsWith("/")) redirectUrl
+            val isPath = redirectUrl.startsWith("/")
+            val path = if (isPath) redirectUrl
             else "/courselist/$redirectUrl"
             "https://www.apps.miamioh.edu$path"
         }
     }
 
     private suspend fun getRedirectResponseHtml(redirectUrl: String): String {
-        val redirectResponse = client.get(determineRedirect(redirectUrl)) {
-            headers {
-                append("Referer", "https://www.apps.miamioh.edu/courselist/")
-            }
-        }
-        return redirectResponse.bodyAsText()
+        return webClient.get()
+            .uri(determineRedirect(redirectUrl))
+            .header("Referer", "https://www.apps.miamioh.edu/courselist/")
+            .cookies { map -> cookies.forEach { (k, v) -> map.add(k, v) } }
+            .retrieve()
+            .bodyToMono(String::class.java)
+            .awaitSingle()
     }
 }
-

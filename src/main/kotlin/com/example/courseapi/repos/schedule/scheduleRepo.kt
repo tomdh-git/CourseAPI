@@ -1,18 +1,13 @@
 package com.example.courseapi.repos.schedule
 
 import com.example.courseapi.exceptions.QueryException
-import com.example.courseapi.models.course.Course
-import com.example.courseapi.models.dto.course.CourseByInfoInput
 import com.example.courseapi.models.dto.schedule.*
 import com.example.courseapi.models.schedule.Schedule
 import com.example.courseapi.repos.course.CourseRepo
-import com.example.courseapi.repos.utils.schedule.AttributeCache
 import com.example.courseapi.repos.utils.schedule.*
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import org.springframework.stereotype.Repository
-import kotlin.collections.plus
 
 @Repository
 class ScheduleRepo(private val course: CourseRepo) {

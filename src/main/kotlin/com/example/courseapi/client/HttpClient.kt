@@ -1,37 +1,34 @@
 package com.example.courseapi.client
 
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.engine.cio.endpoint
-import io.ktor.client.plugins.cookies.HttpCookies
-import io.ktor.client.plugins.HttpTimeout
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.http.client.reactive.ReactorClientHttpConnector
+import reactor.netty.http.client.HttpClient
+import io.netty.channel.ChannelOption
+import io.netty.handler.timeout.ReadTimeoutHandler
+import io.netty.handler.timeout.WriteTimeoutHandler
+import java.time.Duration
+import java.util.concurrent.TimeUnit
 
 @Configuration
 class HttpClientConfig {
     @Bean
-    fun httpClient(): HttpClient = HttpClient(CIO) {
-        install(HttpCookies)
-        install(HttpTimeout) {
-            requestTimeoutMillis = 60_000
-            socketTimeoutMillis = 60_000
-            connectTimeoutMillis = 30_000
-        }
-        expectSuccess = false
-        followRedirects = true
-        engine {
-            maxConnectionsCount = 100
-            endpoint {
-                maxConnectionsPerRoute = 20
-                pipelineMaxSize = 20
-                keepAliveTime = 60000
-                connectTimeout = 5000
-                connectAttempts = 3
+    fun webClient(builder: WebClient.Builder): WebClient {
+        val httpClient = HttpClient.create()
+            .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 30_000)
+            .responseTimeout(Duration.ofMillis(60_000))
+            .doOnConnected { conn ->
+                conn.addHandlerLast(ReadTimeoutHandler(60, TimeUnit.SECONDS))
+                conn.addHandlerLast(WriteTimeoutHandler(60, TimeUnit.SECONDS))
             }
-            https {
-                trustManager = null
+            .followRedirect(true)
+
+        return builder
+            .clientConnector(ReactorClientHttpConnector(httpClient))
+            .codecs { configurer ->
+                configurer.defaultCodecs().maxInMemorySize(16 * 1024 * 1024) // 16MB buffer
             }
-        }
+            .build()
     }
 }

@@ -29,9 +29,7 @@ dependencies {
     // HTML parsing
     implementation("org.jsoup:jsoup:1.17.2")
 
-    // Ktor client
-    implementation("io.ktor:ktor-client-core:2.3.0")
-    implementation("io.ktor:ktor-client-cio:2.3.0")
+
 
     implementation("org.springframework.boot:spring-boot-starter-webflux")
 

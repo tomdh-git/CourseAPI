@@ -1,8 +1,6 @@
 package com.example.courseapi.resolvers.utils.common
 
 import com.example.courseapi.exceptions.*
-import io.ktor.client.plugins.*
-import io.ktor.utils.io.errors.IOException
 import kotlinx.coroutines.TimeoutCancellationException
 import org.slf4j.LoggerFactory
 
@@ -21,7 +19,7 @@ suspend fun <T, R> safeExecute(
     catch (e: ServerBusyException) { logger.error("Server Busy", e); makeError("SERVER BUSY EXCEPTION", e.message) }
     catch (e: Exception) {
         when(e) {
-            is IOException, is ClientRequestException, is ServerResponseException -> { logger.error("Network", e); makeError("NETWORK EXCEPTION", e.message) }
+            is java.io.IOException, is org.springframework.web.reactive.function.client.WebClientResponseException -> { logger.error("Network", e); makeError("NETWORK EXCEPTION", e.message) }
             else -> { logger.error("Unknown", e); makeError("UNKNOWN EXCEPTION", e.message) }
         }
     }
